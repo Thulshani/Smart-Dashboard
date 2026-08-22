@@ -1,0 +1,83 @@
+.login-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+  background: #FAFBFC;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 360px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 28px 26px 24px;
+  box-shadow: 0 4px 16px rgba(16, 20, 30, 0.06);
+}
+
+.login-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 18px;
+  background: var(--bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 3px;
+}
+.login-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 0;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.login-tab.active {
+  background: var(--panel-border);
+  color: var(--text-primary);
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.login-form label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 10px;
+}
+.login-form input {
+  background: var(--bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 14px;
+}
+.login-form button[type="submit"] {
+  margin-top: 18px;
+  background: var(--accent-good);
+  border: none;
+  border-radius: 6px;
+  padding: 11px 0;
+  color: #0B1613;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+.login-form button[type="submit"]:hover { filter: brightness(1.08); }
+
+.login-error {
+  color: var(--accent-bad);
+  font-size: 12.5px;
+  margin: 8px 0 0;
+  min-height: 16px;
+}

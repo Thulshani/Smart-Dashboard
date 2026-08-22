@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dev &amp; QA Performance Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- Signature element: pipeline strip. Each segment is a metric's status,
+       styled like a CI build pipeline — the visual language this audience
+       already reads every day. -->
+  <div class="pipeline-strip" id="pipelineStrip"></div>
+
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand">
+        <span class="brand-mark">◧</span>
+        <div>
+          <h1>Dev &amp; QA Performance</h1>
+          <p class="brand-sub">Sprint analytics &amp; task board</p>
+        </div>
+      </div>
+      <div class="header-meta">
+        <span class="dot dot-live"></span>
+        <span id="lastUpdated">connecting…</span>
+        <span id="currentUser" style="margin-left: 10px;"></span>
+        <button id="logoutBtn" class="logout-btn">Log out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+
+    <!-- METRICS -->
+    <section class="metrics-grid" id="metricsGrid" aria-label="Performance metrics">
+      <!-- cards injected by app.js -->
+    </section>
+
+    <!-- DEFECT RADAR -->
+    <section class="panel radar-panel">
+      <div class="panel-header">
+        <h2>Defect Radar</h2>
+        <span class="panel-count" id="radarBarLabel">—</span>
+      </div>
+
+      <p class="radar-sub">Log a bug the moment it's found — feeds Defect Prevention directly.</p>
+
+      <div class="radar-buttons">
+        <button id="logCaughtBtn" class="radar-btn caught">
+          <span class="radar-icon" aria-hidden="true">▲</span>
+          <span class="radar-label">Caught in QA</span>
+          <span class="radar-desc">found before release</span>
+        </button>
+        <button id="logEscapedBtn" class="radar-btn escaped">
+          <span class="radar-icon" aria-hidden="true">●</span>
+          <span class="radar-label">Escaped to Prod</span>
+          <span class="radar-desc">found after release</span>
+        </button>
+      </div>
+
+      <div class="radar-bar-track">
+        <div id="radarBarFill" class="radar-bar-fill"></div>
+      </div>
+
+      <p id="radarFeedback" class="radar-feedback">&nbsp;</p>
+    </section>
+
+    <!-- TASKS -->
+    <section class="panel tasks-panel">
+      <div class="panel-header">
+        <h2>Tasks</h2>
+        <span class="panel-count" id="taskCount">0</span>
+      </div>
+
+      <form class="task-form" id="taskForm">
+        <input type="text" id="taskTitle" placeholder="Task title" required />
+        <input type="number" id="taskAssignee" placeholder="Assignee ID" min="1" />
+        <select id="taskPriority">
+          <option value="low">Low</option>
+          <option value="medium" selected>Medium</option>
+          <option value="high">High</option>
+        </select>
+        <input type="date" id="taskDueDate" />
+        <button type="submit">Add task</button>
+      </form>
+
+      <div class="task-list" id="taskList">
+        <p class="empty-state">No tasks yet — add one above to get started.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
