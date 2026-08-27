@@ -10,91 +10,164 @@
 </head>
 <body>
 
-  <!-- Signature element: pipeline strip. Each segment is a metric's status,
-       styled like a CI build pipeline — the visual language this audience
-       already reads every day. -->
-  <div class="pipeline-strip" id="pipelineStrip"></div>
+<!-- Signature element: pipeline strip. Each segment is a metric's status,
+     styled like a CI build pipeline — the visual language this audience
+     already reads every day. -->
+<div class="pipeline-strip" id="pipelineStrip"></div>
 
-  <header class="app-header">
-    <div class="header-inner">
-      <div class="brand">
-        <span class="brand-mark">◧</span>
-        <div>
-          <h1>Dev &amp; QA Performance</h1>
-          <p class="brand-sub">Sprint analytics &amp; task board</p>
-        </div>
-      </div>
-      <div class="header-meta">
-        <span class="dot dot-live"></span>
-        <span id="lastUpdated">connecting…</span>
-        <span id="currentUser" style="margin-left: 10px;"></span>
-        <button id="logoutBtn" class="logout-btn">Log out</button>
+<header class="app-header">
+  <div class="header-inner">
+    <div class="brand">
+      <span class="brand-mark">◧</span>
+      <div>
+        <h1>Dev &amp; QA Performance</h1>
+        <p class="brand-sub">Sprint analytics &amp; task board</p>
       </div>
     </div>
-  </header>
+    <div class="header-meta">
+      <span class="dot dot-live"></span>
+      <span id="lastUpdated">connecting…</span>
+      <span id="currentUser" style="margin-left: 10px;"></span>
+      <button id="logoutBtn" class="logout-btn">Log out</button>
+    </div>
+  </div>
+</header>
 
-  <main class="layout">
+<main class="layout">
 
-    <!-- METRICS -->
-    <section class="metrics-grid" id="metricsGrid" aria-label="Performance metrics">
-      <!-- cards injected by app.js -->
-    </section>
+  <!-- METRICS -->
+  <section class="metrics-grid" id="metricsGrid" aria-label="Performance metrics">
+    <!-- cards injected by app.js -->
+  </section>
 
-    <!-- DEFECT RADAR -->
-    <section class="panel radar-panel">
-      <div class="panel-header">
-        <h2>Defect Radar</h2>
-        <span class="panel-count" id="radarBarLabel">—</span>
-      </div>
+  <!-- DEFECT RADAR -->
+  <section class="panel radar-panel">
+    <div class="panel-header">
+      <h2>Defect Radar</h2>
+      <span class="panel-count" id="radarBarLabel">—</span>
+    </div>
 
-      <p class="radar-sub">Log a bug the moment it's found — feeds Defect Prevention directly.</p>
+    <p class="radar-sub">Log a bug the moment it's found — feeds Defect Prevention directly.</p>
 
-      <div class="radar-buttons">
-        <button id="logCaughtBtn" class="radar-btn caught">
-          <span class="radar-icon" aria-hidden="true">▲</span>
-          <span class="radar-label">Caught in QA</span>
-          <span class="radar-desc">found before release</span>
+    <div class="radar-buttons">
+      <button id="logCaughtBtn" class="radar-btn caught">
+        <span class="radar-icon" aria-hidden="true">▲</span>
+        <span class="radar-label">Caught in QA</span>
+        <span class="radar-desc">found before release</span>
+      </button>
+      <button id="logEscapedBtn" class="radar-btn escaped">
+        <span class="radar-icon" aria-hidden="true">●</span>
+        <span class="radar-label">Escaped to Prod</span>
+        <span class="radar-desc">found after release</span>
+      </button>
+    </div>
+
+    <div class="radar-bar-track">
+      <div id="radarBarFill" class="radar-bar-fill"></div>
+    </div>
+
+    <p id="radarFeedback" class="radar-feedback">&nbsp;</p>
+  </section>
+
+  <!-- GROWTH LOG -->
+  <section class="panel growth-panel">
+    <div class="panel-header">
+      <h2>Growth Log</h2>
+      <span class="panel-count" id="growthScoreLabel">—</span>
+    </div>
+
+    <p class="radar-sub">What did you finish? Enter your developer ID and a title, then tap the category.</p>
+
+    <form id="growthForm" class="growth-form">
+      <select id="growthAssignee" required>
+        <option value="">Select your name…</option>
+      </select>
+      <input type="text" id="growthTitle" placeholder="e.g. React Advanced Patterns" required />
+      <div class="growth-buttons">
+        <button type="submit" data-type="course" class="growth-btn">
+          <span class="growth-label">Course done</span>
+          <span class="growth-points">+15 pts</span>
         </button>
-        <button id="logEscapedBtn" class="radar-btn escaped">
-          <span class="radar-icon" aria-hidden="true">●</span>
-          <span class="radar-label">Escaped to Prod</span>
-          <span class="radar-desc">found after release</span>
+        <button type="submit" data-type="certification" class="growth-btn">
+          <span class="growth-label">Certification</span>
+          <span class="growth-points">+25 pts</span>
+        </button>
+        <button type="submit" data-type="tool" class="growth-btn">
+          <span class="growth-label">New tool</span>
+          <span class="growth-points">+10 pts</span>
         </button>
       </div>
+    </form>
 
-      <div class="radar-bar-track">
-        <div id="radarBarFill" class="radar-bar-fill"></div>
+    <p id="growthFeedback" class="radar-feedback">&nbsp;</p>
+
+    <div class="growth-recent">
+      <p class="growth-recent-title">Recent</p>
+      <div id="growthRecentList">
+        <p class="empty-state">No achievements logged yet.</p>
       </div>
+    </div>
+  </section>
 
-      <p id="radarFeedback" class="radar-feedback">&nbsp;</p>
-    </section>
+  <!-- COLLABORATION LOG -->
+  <section class="panel collab-panel">
+    <div class="panel-header">
+      <h2>Collaboration Log</h2>
+      <span class="panel-count" id="collabScoreLabel">—</span>
+    </div>
 
-    <!-- TASKS -->
-    <section class="panel tasks-panel">
-      <div class="panel-header">
-        <h2>Tasks</h2>
-        <span class="panel-count" id="taskCount">0</span>
-      </div>
+    <p class="radar-sub">Log it when it happens — select your name, then tap.</p>
 
-      <form class="task-form" id="taskForm">
-        <input type="text" id="taskTitle" placeholder="Task title" required />
-        <input type="number" id="taskAssignee" placeholder="Assignee ID" min="1" />
-        <select id="taskPriority">
-          <option value="low">Low</option>
-          <option value="medium" selected>Medium</option>
-          <option value="high">High</option>
-        </select>
-        <input type="date" id="taskDueDate" />
-        <button type="submit">Add task</button>
-      </form>
+    <select id="collabAssignee" required>
+      <option value="">Select your name…</option>
+    </select>
 
-      <div class="task-list" id="taskList">
-        <p class="empty-state">No tasks yet — add one above to get started.</p>
-      </div>
-    </section>
+    <div class="collab-buttons">
+      <button type="button" data-type="review" class="collab-btn">
+        <span class="collab-label">PR review</span>
+        <span class="collab-points">+10 pts</span>
+      </button>
+      <button type="button" data-type="help" class="collab-btn">
+        <span class="collab-label">Helped teammate</span>
+        <span class="collab-points">+15 pts</span>
+      </button>
+      <button type="button" data-type="shared" class="collab-btn">
+        <span class="collab-label">Shared task</span>
+        <span class="collab-points">+20 pts</span>
+      </button>
+    </div>
 
-  </main>
+    <p id="collabFeedback" class="radar-feedback">&nbsp;</p>
+  </section>
 
-  <script src="app.js"></script>
+  <!-- TASKS -->
+  <section class="panel tasks-panel">
+    <div class="panel-header">
+      <h2>Tasks</h2>
+      <span class="panel-count" id="taskCount">0</span>
+    </div>
+
+    <form class="task-form" id="taskForm">
+      <input type="text" id="taskTitle" placeholder="Task title" required />
+      <select id="taskAssignee">
+        <option value="">Unassigned</option>
+      </select>
+      <select id="taskPriority">
+        <option value="low">Low</option>
+        <option value="medium" selected>Medium</option>
+        <option value="high">High</option>
+      </select>
+      <input type="date" id="taskDueDate" />
+      <button type="submit">Add task</button>
+    </form>
+
+    <div class="task-list" id="taskList">
+      <p class="empty-state">No tasks yet — add one above to get started.</p>
+    </div>
+  </section>
+
+</main>
+
+<script src="app.js"></script>
 </body>
 </html>

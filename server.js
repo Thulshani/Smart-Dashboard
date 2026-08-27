@@ -2,6 +2,8 @@
 // Entry point. Run with: npm start
 // Server starts on http://localhost:3001
 
+require('dotenv').config(); // loads SONAR_TOKEN, SONAR_PROJECT_KEY from .env
+
 const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
@@ -11,6 +13,8 @@ const taskRoutes = require('./routes/tasks');
 const developerRoutes = require('./routes/developers');
 const metricsRoutes = require('./routes/metrics');
 const bugRoutes = require('./routes/bugs');
+const achievementRoutes = require('./routes/achievements');
+const collaborationRoutes = require('./routes/collaborations');
 const requireAuth = require('./middleware/requireAuth');
 
 const app = express();
@@ -40,10 +44,15 @@ app.use('/api/tasks', requireAuth, taskRoutes);
 app.use('/api/developers', requireAuth, developerRoutes);
 app.use('/api/metrics', requireAuth, metricsRoutes);
 app.use('/api/bugs', requireAuth, bugRoutes);
+app.use('/api/achievements', requireAuth, achievementRoutes);
+app.use('/api/collaborations', requireAuth, collaborationRoutes);
 
 // Serve the dashboard frontend (public/index.html, styles.css, app.js, login.html)
 app.use(express.static('public'));
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  if (!process.env.SONAR_TOKEN) {
+    console.log('Note: SONAR_TOKEN not set — Quality Impact / Technical Debt Exposure will show partial data. See .env.example.');
+  }
 });

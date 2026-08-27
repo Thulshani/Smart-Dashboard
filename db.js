@@ -1,7 +1,6 @@
 // db.js
 // Sets up a local SQLite database file and creates the core tables.
-// Swap this file out for a Postgres connection later — the rest of the
-// app (routes, metrics) doesn't need to change if you keep the same table shapes.
+
 
 const Database = require('better-sqlite3');
 const path = require('path');
@@ -54,6 +53,32 @@ db.exec(`
     severity TEXT DEFAULT 'medium',
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (task_id) REFERENCES tasks(id)
+  );
+`);
+
+// Achievements table for the Learning & Growth Score — self-logged courses,
+// certifications, and new tools adopted by each developer.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS achievements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    developer_id INTEGER NOT NULL,
+    type TEXT NOT NULL, -- 'course' | 'certification' | 'tool'
+    title TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (developer_id) REFERENCES developers(id)
+  );
+`);
+
+// Collaborations table for the Collaboration Index — self-logged PR
+// reviews, teammates helped, and shared tasks per developer.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS collaborations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    developer_id INTEGER NOT NULL,
+    type TEXT NOT NULL, -- 'review' | 'help' | 'shared'
+    note TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (developer_id) REFERENCES developers(id)
   );
 `);
 
