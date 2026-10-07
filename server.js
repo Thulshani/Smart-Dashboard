@@ -24,6 +24,10 @@ const requireAuth = require('./middleware/requireAuth');
 const requireRole = require('./middleware/requireRole');
 
 const app = express();
+
+// Don't advertise the framework and version in the X-Powered-By response header.
+app.disable('x-powered-by');
+
 const PORT = process.env.PORT || 3001;
 
 // Session secret comes from the environment, never from source code.
