@@ -36,6 +36,13 @@
     .overview-card .ov-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin: 0 0 6px; }
     .overview-card .ov-value { font-size: 26px; font-weight: 700; margin: 0; color: var(--text-primary); }
     .overview-card .ov-sub { font-size: 13px; color: var(--text-muted); margin: 4px 0 0; }
+
+    /* Visually hidden, but still read by screen readers and counted as a
+       valid label for the form control. Does not affect the layout. */
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+    }
   </style>
 </head>
 <body>
@@ -102,8 +109,11 @@
         <p class="radar-sub">Log a bug the moment it's found.</p>
 
         <form id="bugForm" class="growth-form">
+          <label for="bugTitle" class="sr-only">Bug title</label>
           <input type="text" id="bugTitle" placeholder="Bug title (e.g. Login fails on Safari)" required />
+          <label for="bugDescription" class="sr-only">Bug description</label>
           <textarea id="bugDescription" placeholder="Description (optional) — steps to reproduce, expected vs actual, etc." rows="4"></textarea>
+          <label for="bugSeverity" class="sr-only">Bug severity</label>
           <select id="bugSeverity" required>
             <option value="low">Low severity</option>
             <option value="medium" selected>Medium severity</option>
@@ -142,6 +152,7 @@
         </div>
         <p class="radar-sub">What did you finish? Type it, then tap the category.</p>
         <form id="growthForm" class="growth-form">
+          <label for="growthTitle" class="sr-only">Achievement title</label>
           <input type="text" id="growthTitle" placeholder="e.g. React Advanced Patterns" required />
           <div class="growth-buttons">
             <button type="submit" data-type="course" class="growth-btn">

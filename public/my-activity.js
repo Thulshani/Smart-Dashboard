@@ -7,6 +7,9 @@
 const API_BASE = '/api';
 let currentUser = null;
 
+const ALLOWED_STATUSES = ['todo', 'in_progress', 'done'];
+const ALLOWED_PRIORITIES = ['low', 'medium', 'high'];
+
 // --- Sidebar navigation ---
 document.querySelectorAll('.sidebar-link').forEach((link) => {
     link.addEventListener('click', () => {
@@ -32,10 +35,23 @@ async function fetchJSON(url, options = {}) {
     return res.json();
 }
 
-function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+/**
+ * Small DOM helper: creates an element with a class and (optional) text.
+ * Text is always set with textContent, so it can never be parsed as HTML.
+ */
+function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined && text !== null) node.textContent = String(text);
+    return node;
+}
+
+/**
+ * Coerces a value to a safe integer id, or null if it isn't one.
+ */
+function safeId(value) {
+    const n = Number(value);
+    return Number.isInteger(n) && n >= 0 ? n : null;
 }
 
 const METRIC_LABELS = {
@@ -65,23 +81,28 @@ async function loadRecommendations() {
     try {
         const recs = await fetchJSON(`${API_BASE}/recommendations`);
         document.getElementById('recCount').textContent = (recs || []).length;
+        list.replaceChildren();
 
         if (!recs || recs.length === 0) {
-            list.innerHTML = '<p class="empty-state">No notes yet.</p>';
+            list.appendChild(el('p', 'empty-state', 'No notes yet.'));
             return;
         }
 
-        list.innerHTML = recs.map((r) => `
-      <div class="task-row">
-        <span class="task-title">${METRIC_LABELS[r.metric_key] || r.metric_key}</span>
-        <span class="task-meta">
-          <span>${escapeHtml(r.message)}</span>
-        </span>
-        <span class="task-meta">
-          <span>from ${escapeHtml(r.manager_username || 'your manager')} — ${recTimeAgo(r.created_at)}</span>
-        </span>
-      </div>
-    `).join('');
+        recs.forEach((r) => {
+            const row = el('div', 'task-row');
+            row.appendChild(el('span', 'task-title', METRIC_LABELS[r.metric_key] || r.metric_key));
+
+            const msgMeta = el('span', 'task-meta');
+            msgMeta.appendChild(el('span', '', r.message));
+            row.appendChild(msgMeta);
+
+            const fromMeta = el('span', 'task-meta');
+            fromMeta.appendChild(el('span', '',
+                `from ${r.manager_username || 'your manager'} — ${recTimeAgo(r.created_at)}`));
+            row.appendChild(fromMeta);
+
+            list.appendChild(row);
+        });
     } catch (err) {
         console.error(err);
     }
@@ -104,6 +125,26 @@ async function checkAuthAndRole() {
 
 // --- My Tasks ---
 
+/**
+ * Builds the action buttons for one of my tasks as real DOM elements.
+ */
+function myTaskButtons(task) {
+    const id = safeId(task.id);
+    if (id === null) return [];
+
+    const makeBtn = (action, label) => {
+        const btn = el('button', '', label);
+        btn.dataset.action = action;
+        btn.dataset.id = String(id);
+        return btn;
+    };
+
+    if (task.status === 'todo') return [makeBtn('start', 'Start')];
+    if (task.status === 'in_progress') return [makeBtn('done', 'Mark done')];
+    if (task.status === 'done') return [makeBtn('reopen', 'Reopen')];
+    return [];
+}
+
 async function loadMyTasks() {
     const list = document.getElementById('taskList');
     try {
@@ -112,27 +153,37 @@ async function loadMyTasks() {
         const mine = tasks.filter((t) => t.assignee_id === currentUser.developer_id);
 
         document.getElementById('taskCount').textContent = mine.length;
+        list.replaceChildren();
 
         if (mine.length === 0) {
-            list.innerHTML = '<p class="empty-state">No tasks assigned yet.</p>';
+            list.appendChild(el('p', 'empty-state', 'No tasks assigned yet.'));
             return;
         }
 
-        list.innerHTML = mine.map((task) => `
-      <div class="task-row" data-id="${task.id}">
-        <span class="task-status-dot ${task.status}"></span>
-        <span class="task-title ${task.status === 'done' ? 'done' : ''}">${escapeHtml(task.title)}</span>
-        <span class="task-meta">
-          <span class="task-priority ${task.priority}">${task.priority}</span>
-          ${task.due_date ? `<span>due ${task.due_date}</span>` : ''}
-        </span>
-        <span class="task-actions">
-          ${task.status === 'todo' ? `<button data-action="start" data-id="${task.id}">Start</button>` : ''}
-          ${task.status === 'in_progress' ? `<button data-action="done" data-id="${task.id}">Mark done</button>` : ''}
-          ${task.status === 'done' ? `<button data-action="reopen" data-id="${task.id}">Reopen</button>` : ''}
-        </span>
-      </div>
-    `).join('');
+        mine.forEach((task) => {
+            const rowId = safeId(task.id);
+            const status = ALLOWED_STATUSES.includes(task.status) ? task.status : '';
+            const priority = ALLOWED_PRIORITIES.includes(task.priority) ? task.priority : '';
+
+            const row = el('div', 'task-row');
+            if (rowId !== null) row.dataset.id = String(rowId);
+
+            row.appendChild(el('span', ('task-status-dot ' + status).trim()));
+            row.appendChild(el('span', 'task-title' + (status === 'done' ? ' done' : ''), task.title));
+
+            const meta = el('span', 'task-meta');
+            meta.appendChild(el('span', ('task-priority ' + priority).trim(), priority));
+            if (task.due_date) {
+                meta.appendChild(el('span', '', `due ${task.due_date}`));
+            }
+            row.appendChild(meta);
+
+            const actions = el('span', 'task-actions');
+            myTaskButtons(task).forEach((btn) => actions.appendChild(btn));
+            row.appendChild(actions);
+
+            list.appendChild(row);
+        });
     } catch (err) {
         console.error(err);
     }
@@ -141,13 +192,16 @@ async function loadMyTasks() {
 document.getElementById('taskList').addEventListener('click', async (e) => {
     const btn = e.target.closest('button[data-action]');
     if (!btn) return;
-    const id = btn.dataset.id;
+    const id = safeId(btn.dataset.id);
+    if (id === null) return;
     const statusMap = { start: 'in_progress', done: 'done', reopen: 'in_progress' };
+    const newStatus = statusMap[btn.dataset.action];
+    if (!newStatus) return;
     try {
         await fetchJSON(`${API_BASE}/tasks/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: statusMap[btn.dataset.action] }),
+            body: JSON.stringify({ status: newStatus }),
         });
         await loadMyTasks();
     } catch (err) {
@@ -168,17 +222,19 @@ async function refreshBugRecent() {
     try {
         const bugs = await fetchJSON(`${API_BASE}/bugs`);
         const mine = (bugs || []).filter((b) => b.reported_by === currentUser.developer_id);
+        list.replaceChildren();
         if (mine.length === 0) {
-            list.innerHTML = '<p class="empty-state">No bugs logged yet.</p>';
+            list.appendChild(el('p', 'empty-state', 'No bugs logged yet.'));
             return;
         }
-        list.innerHTML = mine.slice(0, 5).map((b) => `
-      <div class="growth-recent-item">
-        <span>${bugSeverityIcon(b.severity)}</span>
-        <span class="growth-recent-item-title">${escapeHtml(b.title)} ${b.status === 'resolved' ? '(resolved)' : ''}</span>
-        <span class="growth-recent-item-time">${timeAgo(b.created_at)}</span>
-      </div>
-    `).join('');
+        mine.slice(0, 5).forEach((b) => {
+            const item = el('div', 'growth-recent-item');
+            item.appendChild(el('span', '', bugSeverityIcon(b.severity)));
+            item.appendChild(el('span', 'growth-recent-item-title',
+                `${b.title == null ? '' : b.title} ${b.status === 'resolved' ? '(resolved)' : ''}`.trim()));
+            item.appendChild(el('span', 'growth-recent-item-time', timeAgo(b.created_at)));
+            list.appendChild(item);
+        });
     } catch (err) {
         console.error(err);
     }
@@ -242,17 +298,18 @@ async function refreshGrowthRecent() {
     try {
         const achievements = await fetchJSON(`${API_BASE}/achievements`);
         const mine = (achievements || []).filter((a) => a.developer_id === currentUser.developer_id);
+        list.replaceChildren();
         if (mine.length === 0) {
-            list.innerHTML = '<p class="empty-state">No achievements logged yet.</p>';
+            list.appendChild(el('p', 'empty-state', 'No achievements logged yet.'));
             return;
         }
-        list.innerHTML = mine.slice(0, 3).map((a) => `
-      <div class="growth-recent-item">
-        <span>${achievementIcon(a.type)}</span>
-        <span class="growth-recent-item-title">${escapeHtml(a.title || a.type)}</span>
-        <span class="growth-recent-item-time">${timeAgo(a.created_at)}</span>
-      </div>
-    `).join('');
+        mine.slice(0, 3).forEach((a) => {
+            const item = el('div', 'growth-recent-item');
+            item.appendChild(el('span', '', achievementIcon(a.type)));
+            item.appendChild(el('span', 'growth-recent-item-title', a.title || a.type));
+            item.appendChild(el('span', 'growth-recent-item-time', timeAgo(a.created_at)));
+            list.appendChild(item);
+        });
     } catch (err) {
         console.error(err);
     }
@@ -431,16 +488,18 @@ async function refreshTimeLogRecent() {
     try {
         const logs = await fetchJSON(`${API_BASE}/time-logs`);
         const mine = (logs || []).filter((l) => l.developer_id === currentUser.developer_id && l.hours_worked !== null);
+        list.replaceChildren();
         if (mine.length === 0) {
-            list.innerHTML = '<p class="empty-state">No completed time logs yet.</p>';
+            list.appendChild(el('p', 'empty-state', 'No completed time logs yet.'));
             return;
         }
-        list.innerHTML = mine.slice(0, 5).map((l) => `
-      <div class="growth-recent-item">
-        <span>🕒</span>
-        <span class="growth-recent-item-title">${l.work_date} — ${formatDuration(l.hours_worked)}</span>
-      </div>
-    `).join('');
+        mine.slice(0, 5).forEach((l) => {
+            const item = el('div', 'growth-recent-item');
+            item.appendChild(el('span', '', '🕒'));
+            item.appendChild(el('span', 'growth-recent-item-title',
+                `${l.work_date} — ${formatDuration(l.hours_worked)}`));
+            list.appendChild(item);
+        });
     } catch (err) {
         console.error(err);
     }
@@ -462,7 +521,7 @@ document.getElementById('clockToggleBtn').addEventListener('click', async () => 
 });
 
 // --- Startup ---
-(async () => {
+void (async () => {
     const user = await checkAuthAndRole();
     if (!user) return;
     currentUser = user;
