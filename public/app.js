@@ -32,6 +32,9 @@ const METRIC_TIPS = {
   burnoutRisk: "I've noticed some signs you might be stretched thin — let's talk about redistributing tasks or taking some time to recover.",
 };
 
+// Only these task statuses are ever rendered as CSS classes / buttons.
+const ALLOWED_STATUSES = ['todo', 'in_progress', 'done'];
+
 // --- Sidebar navigation ---
 document.querySelectorAll('.sidebar-link').forEach((link) => {
   link.addEventListener('click', () => {
@@ -89,10 +92,26 @@ function statusColorFor(score, inverted = false) {
   return 'bad';
 }
 
+/**
+ * Escapes text for safe use in HTML content AND inside quoted attributes.
+ * (Escapes & < > " ' so values can't break out of an attribute either.)
+ */
 function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str == null ? '' : String(str);
-  return div.innerHTML;
+  return String(str == null ? '' : str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+}
+
+/**
+ * Coerces a value to a safe integer id, or null if it isn't one.
+ * Task ids are integers, so anything else is rejected outright.
+ */
+function safeId(value) {
+  const n = Number(value);
+  return Number.isInteger(n) && n >= 0 ? n : null;
 }
 
 /**
@@ -201,19 +220,27 @@ function formatDate(d) {
   return d;
 }
 
+/**
+ * Builds the action buttons for a task row as an HTML string.
+ * The id is coerced to an integer, and the status is checked against an
+ * allow-list, so no raw API value is ever concatenated into the markup.
+ */
 function taskActionsFor(task) {
+  const id = safeId(task.id);
+  if (id === null) return '';
+
   const buttons = [];
 
   if (task.status === 'todo') {
-    buttons.push(`<button data-action="start" data-id="${task.id}">Start</button>`);
+    buttons.push(`<button data-action="start" data-id="${id}">Start</button>`);
   } else if (task.status === 'in_progress') {
-    buttons.push(`<button data-action="done" data-id="${task.id}">Mark done</button>`);
-    buttons.push(`<button data-action="pause" data-id="${task.id}">Back to to-do</button>`);
+    buttons.push(`<button data-action="done" data-id="${id}">Mark done</button>`);
+    buttons.push(`<button data-action="pause" data-id="${id}">Back to to-do</button>`);
   } else if (task.status === 'done') {
-    buttons.push(`<button data-action="reopen" data-id="${task.id}">Reopen</button>`);
+    buttons.push(`<button data-action="reopen" data-id="${id}">Reopen</button>`);
   }
 
-  buttons.push(`<button data-action="delete" data-id="${task.id}" class="danger">Delete</button>`);
+  buttons.push(`<button data-action="delete" data-id="${id}" class="danger">Delete</button>`);
   return buttons.join('');
 }
 
@@ -226,13 +253,17 @@ function renderTasks(tasks) {
     return;
   }
 
-  list.innerHTML = tasks.map((task) => `
-    <div class="task-row" data-id="${escapeHtml(String(task.id))}">
-      <span class="task-status-dot ${escapeHtml(task.status || '')}"></span>
-      <span class="task-title ${task.status === 'done' ? 'done' : ''}">${escapeHtml(task.title)}</span>
+  list.innerHTML = tasks.map((task) => {
+    const rowId = safeId(task.id);
+    const status = ALLOWED_STATUSES.includes(task.status) ? task.status : '';
+
+    return `
+    <div class="task-row" data-id="${rowId === null ? '' : rowId}">
+      <span class="task-status-dot ${escapeHtml(status)}"></span>
+      <span class="task-title ${status === 'done' ? 'done' : ''}">${escapeHtml(task.title)}</span>
       <span class="task-meta">
         <span class="task-priority ${escapeHtml(task.priority || '')}">${escapeHtml(task.priority || '')}</span>
-        ${task.status === 'in_progress' ? '<span class="task-inprogress-tag">in progress</span>' : ''}
+        ${status === 'in_progress' ? '<span class="task-inprogress-tag">in progress</span>' : ''}
         ${task.due_date ? `<span>due ${escapeHtml(formatDate(task.due_date))}</span>` : ''}
         ${task.assignee_name ? `<span>${escapeHtml(task.assignee_name)}</span>` : ''}
       </span>
@@ -240,7 +271,8 @@ function renderTasks(tasks) {
         ${taskActionsFor(task)}
       </span>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 // --- Developers ---
@@ -389,8 +421,9 @@ document.getElementById('taskList').addEventListener('click', async (e) => {
   const btn = e.target.closest('button[data-action]');
   if (!btn) return;
 
-  const id = btn.dataset.id;
+  const id = safeId(btn.dataset.id);
   const action = btn.dataset.action;
+  if (id === null) return;
 
   try {
     if (action === 'delete') {
@@ -551,7 +584,7 @@ async function refreshGrowthRecent() {
       <div class="growth-recent-item">
         <span>${achievementIcon(a.type)}</span>
         <span class="growth-recent-item-title">${escapeHtml(a.title || a.type)}</span>
-        <span class="growth-recent-item-time">${timeAgo(a.created_at)}</span>
+        <span class="growth-recent-item-time">${escapeHtml(timeAgo(a.created_at))}</span>
       </div>
     `).join('');
   } catch (err) {
@@ -607,7 +640,7 @@ async function logCollaboration(type) {
       body: JSON.stringify({ developer_id, type }),
     });
     feedback.textContent = `logged — ${type}`;
-    void loadAll();
+    await loadAll();
   } catch (err) {
     feedback.textContent = 'could not log — try again';
     console.error(err);
@@ -639,7 +672,7 @@ async function logCheckin(loadRating) {
       body: JSON.stringify({ developer_id, load_rating: loadRating }),
     });
     feedback.textContent = 'thanks for checking in';
-    void loadAll();
+    await loadAll();
   } catch (err) {
     feedback.textContent = 'could not log — try again';
     console.error(err);
