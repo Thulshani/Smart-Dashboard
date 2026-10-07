@@ -33,6 +33,13 @@
         .page-section { display: none; }
         .page-section.active { display: block; }
         .top-status { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-bottom: 16px; font-size: 13px; color: var(--text-muted); }
+
+        /* Visually hidden, but still read by screen readers and counted as a
+           valid label for the form control. Does not affect the layout. */
+        .sr-only {
+            position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+            overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+        }
     </style>
 </head>
 <body>
@@ -84,6 +91,7 @@
                     <h2>Filter by developer &amp; date</h2>
                 </div>
                 <form id="dateFilterForm" class="task-form">
+                    <label for="filterDeveloper" class="sr-only">Developer</label>
                     <select id="filterDeveloper">
                         <option value="">All developers</option>
                     </select>
@@ -109,8 +117,11 @@
                 <p class="radar-sub">Log a bug the moment it's found — feeds Defect Prevention directly.</p>
 
                 <form id="bugForm" class="growth-form">
+                    <label for="bugTitle" class="sr-only">Bug title</label>
                     <input type="text" id="bugTitle" placeholder="Bug title (e.g. Login fails on Safari)" required />
+                    <label for="bugDescription" class="sr-only">Bug description</label>
                     <textarea id="bugDescription" placeholder="Description (optional) — steps to reproduce, expected vs actual, etc." rows="4"></textarea>
+                    <label for="bugSeverity" class="sr-only">Bug severity</label>
                     <select id="bugSeverity" required>
                         <option value="low">Low severity</option>
                         <option value="medium" selected>Medium severity</option>
@@ -156,9 +167,11 @@
                 <p class="radar-sub">What did you finish? Enter your developer ID and a title, then tap the category.</p>
 
                 <form id="growthForm" class="growth-form">
+                    <label for="growthAssignee" class="sr-only">Your name</label>
                     <select id="growthAssignee" required>
                         <option value="">Select your name…</option>
                     </select>
+                    <label for="growthTitle" class="sr-only">Achievement title</label>
                     <input type="text" id="growthTitle" placeholder="e.g. React Advanced Patterns" required />
                     <div class="growth-buttons">
                         <button type="submit" data-type="course" class="growth-btn">
@@ -197,6 +210,7 @@
 
                 <p class="radar-sub">Log it when it happens — select your name, then tap.</p>
 
+                <label for="collabAssignee" class="sr-only">Your name</label>
                 <select id="collabAssignee" required>
                     <option value="">Select your name…</option>
                 </select>
@@ -229,6 +243,7 @@
 
                 <p class="radar-sub">A quick, private check-in — this helps the team spot burnout early, not track performance.</p>
 
+                <label for="checkinAssignee" class="sr-only">Your name</label>
                 <select id="checkinAssignee" required>
                     <option value="">Select your name…</option>
                 </select>
@@ -254,15 +269,19 @@
                 </div>
 
                 <form class="task-form" id="taskForm">
+                    <label for="taskTitle" class="sr-only">Task title</label>
                     <input type="text" id="taskTitle" placeholder="Task title" required />
+                    <label for="taskAssignee" class="sr-only">Assignee</label>
                     <select id="taskAssignee">
                         <option value="">Unassigned</option>
                     </select>
+                    <label for="taskPriority" class="sr-only">Priority</label>
                     <select id="taskPriority">
                         <option value="low">Low</option>
                         <option value="medium" selected>Medium</option>
                         <option value="high">High</option>
                     </select>
+                    <label for="taskDueDate" class="sr-only">Due date</label>
                     <input type="date" id="taskDueDate" />
                     <button type="submit">Add task</button>
                 </form>
