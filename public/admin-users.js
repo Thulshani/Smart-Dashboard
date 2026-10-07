@@ -248,7 +248,7 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
   window.location.href = 'login.html';
 });
 
-(async () => {
+void (async () => {
   const user = await checkAdminOrRedirect();
   if (!user) return;
   document.getElementById('currentUser').textContent = user.username;

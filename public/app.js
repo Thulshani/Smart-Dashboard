@@ -707,7 +707,7 @@ document.querySelectorAll('.checkin-btn').forEach((btn) => {
 });
 
 // Require a logged-in session before showing any data
-(async () => {
+void (async () => {
   const user = await checkAuthOrRedirect();
   if (!user) return;
   document.getElementById('currentUser').textContent = user.username;
