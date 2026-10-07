@@ -93,19 +93,6 @@ function statusColorFor(score, inverted = false) {
 }
 
 /**
- * Escapes text for safe use in HTML content AND inside quoted attributes.
- * (Escapes & < > " ' so values can't break out of an attribute either.)
- */
-function escapeHtml(str) {
-  return String(str == null ? '' : str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-}
-
-/**
  * Coerces a value to a safe integer id, or null if it isn't one.
  * Task ids are integers, so anything else is rejected outright.
  */
@@ -221,58 +208,86 @@ function formatDate(d) {
 }
 
 /**
- * Builds the action buttons for a task row as an HTML string.
- * The id is coerced to an integer, and the status is checked against an
- * allow-list, so no raw API value is ever concatenated into the markup.
+ * Small DOM helper: creates an element with a class and (optional) text.
+ * Text is always set with textContent, so it can never be parsed as HTML.
  */
-function taskActionsFor(task) {
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined && text !== null) node.textContent = String(text);
+  return node;
+}
+
+const ALLOWED_PRIORITIES = ['low', 'medium', 'high'];
+
+/**
+ * Builds the action buttons for a task row as real DOM elements.
+ * The id is coerced to an integer; nothing from the API is parsed as HTML.
+ */
+function taskActionButtons(task) {
   const id = safeId(task.id);
-  if (id === null) return '';
+  if (id === null) return [];
+
+  const makeBtn = (action, label, extraClass) => {
+    const btn = el('button', extraClass || '', label);
+    btn.dataset.action = action;
+    btn.dataset.id = String(id);
+    return btn;
+  };
 
   const buttons = [];
-
   if (task.status === 'todo') {
-    buttons.push(`<button data-action="start" data-id="${id}">Start</button>`);
+    buttons.push(makeBtn('start', 'Start'));
   } else if (task.status === 'in_progress') {
-    buttons.push(`<button data-action="done" data-id="${id}">Mark done</button>`);
-    buttons.push(`<button data-action="pause" data-id="${id}">Back to to-do</button>`);
+    buttons.push(makeBtn('done', 'Mark done'));
+    buttons.push(makeBtn('pause', 'Back to to-do'));
   } else if (task.status === 'done') {
-    buttons.push(`<button data-action="reopen" data-id="${id}">Reopen</button>`);
+    buttons.push(makeBtn('reopen', 'Reopen'));
   }
-
-  buttons.push(`<button data-action="delete" data-id="${id}" class="danger">Delete</button>`);
-  return buttons.join('');
+  buttons.push(makeBtn('delete', 'Delete', 'danger'));
+  return buttons;
 }
 
 function renderTasks(tasks) {
   const list = document.getElementById('taskList');
   document.getElementById('taskCount').textContent = tasks.length;
+  list.replaceChildren();
 
   if (tasks.length === 0) {
-    list.innerHTML = '<p class="empty-state">No tasks yet — add one above to get started.</p>';
+    list.appendChild(el('p', 'empty-state', 'No tasks yet — add one above to get started.'));
     return;
   }
 
-  list.innerHTML = tasks.map((task) => {
+  tasks.forEach((task) => {
     const rowId = safeId(task.id);
     const status = ALLOWED_STATUSES.includes(task.status) ? task.status : '';
+    const priority = ALLOWED_PRIORITIES.includes(task.priority) ? task.priority : '';
 
-    return `
-    <div class="task-row" data-id="${rowId === null ? '' : rowId}">
-      <span class="task-status-dot ${escapeHtml(status)}"></span>
-      <span class="task-title ${status === 'done' ? 'done' : ''}">${escapeHtml(task.title)}</span>
-      <span class="task-meta">
-        <span class="task-priority ${escapeHtml(task.priority || '')}">${escapeHtml(task.priority || '')}</span>
-        ${status === 'in_progress' ? '<span class="task-inprogress-tag">in progress</span>' : ''}
-        ${task.due_date ? `<span>due ${escapeHtml(formatDate(task.due_date))}</span>` : ''}
-        ${task.assignee_name ? `<span>${escapeHtml(task.assignee_name)}</span>` : ''}
-      </span>
-      <span class="task-actions">
-        ${taskActionsFor(task)}
-      </span>
-    </div>
-  `;
-  }).join('');
+    const row = el('div', 'task-row');
+    if (rowId !== null) row.dataset.id = String(rowId);
+
+    row.appendChild(el('span', ('task-status-dot ' + status).trim()));
+    row.appendChild(el('span', 'task-title' + (status === 'done' ? ' done' : ''), task.title));
+
+    const meta = el('span', 'task-meta');
+    meta.appendChild(el('span', ('task-priority ' + priority).trim(), priority));
+    if (status === 'in_progress') {
+      meta.appendChild(el('span', 'task-inprogress-tag', 'in progress'));
+    }
+    if (task.due_date) {
+      meta.appendChild(el('span', '', `due ${formatDate(task.due_date)}`));
+    }
+    if (task.assignee_name) {
+      meta.appendChild(el('span', '', task.assignee_name));
+    }
+    row.appendChild(meta);
+
+    const actions = el('span', 'task-actions');
+    taskActionButtons(task).forEach((btn) => actions.appendChild(btn));
+    row.appendChild(actions);
+
+    list.appendChild(row);
+  });
 }
 
 // --- Developers ---
@@ -288,15 +303,18 @@ async function loadDevelopers() {
     const checkinSelect = document.getElementById('checkinAssignee');
     const filterSelect = document.getElementById('filterDeveloper');
 
-    const options = developers.map((d) =>
-        `<option value="${escapeHtml(String(d.id))}">${escapeHtml(d.name)}</option>`
-    ).join('');
+    const fillSelect = (select, placeholder) => {
+      select.replaceChildren(new Option(placeholder, ''));
+      developers.forEach((d) => {
+        select.appendChild(new Option(String(d.name), String(d.id)));
+      });
+    };
 
-    taskSelect.innerHTML = '<option value="">Unassigned</option>' + options;
-    growthSelect.innerHTML = '<option value="">Select your name…</option>' + options;
-    collabSelect.innerHTML = '<option value="">Select your name…</option>' + options;
-    checkinSelect.innerHTML = '<option value="">Select your name…</option>' + options;
-    filterSelect.innerHTML = '<option value="">All developers</option>' + options;
+    fillSelect(taskSelect, 'Unassigned');
+    fillSelect(growthSelect, 'Select your name…');
+    fillSelect(collabSelect, 'Select your name…');
+    fillSelect(checkinSelect, 'Select your name…');
+    fillSelect(filterSelect, 'All developers');
   } catch (err) {
     console.error('Could not load developers list:', err);
   }
@@ -480,17 +498,19 @@ async function refreshBugRecent() {
   const list = document.getElementById('bugRecentList');
   try {
     const bugs = await fetchJSON(`${API_BASE}/bugs`);
+    list.replaceChildren();
     if (!bugs || bugs.length === 0) {
-      list.innerHTML = '<p class="empty-state">No bugs logged yet.</p>';
+      list.appendChild(el('p', 'empty-state', 'No bugs logged yet.'));
       return;
     }
-    list.innerHTML = bugs.slice(0, 5).map((b) => `
-      <div class="growth-recent-item">
-        <span>${bugSeverityIcon(b.severity)}</span>
-        <span class="growth-recent-item-title">${escapeHtml(b.title)} ${b.status === 'resolved' ? '(resolved)' : ''}</span>
-        <span class="growth-recent-item-time">${b.reported_by_name ? escapeHtml(b.reported_by_name) : ''}</span>
-      </div>
-    `).join('');
+    bugs.slice(0, 5).forEach((b) => {
+      const item = el('div', 'growth-recent-item');
+      item.appendChild(el('span', '', bugSeverityIcon(b.severity)));
+      item.appendChild(el('span', 'growth-recent-item-title',
+          `${b.title == null ? '' : b.title} ${b.status === 'resolved' ? '(resolved)' : ''}`.trim()));
+      item.appendChild(el('span', 'growth-recent-item-time', b.reported_by_name || ''));
+      list.appendChild(item);
+    });
   } catch (err) {
     console.error(err);
   }
@@ -576,17 +596,18 @@ async function refreshGrowthRecent() {
   const list = document.getElementById('growthRecentList');
   try {
     const achievements = await fetchJSON(`${API_BASE}/achievements`);
+    list.replaceChildren();
     if (!achievements || achievements.length === 0) {
-      list.innerHTML = '<p class="empty-state">No achievements logged yet.</p>';
+      list.appendChild(el('p', 'empty-state', 'No achievements logged yet.'));
       return;
     }
-    list.innerHTML = achievements.slice(0, 3).map((a) => `
-      <div class="growth-recent-item">
-        <span>${achievementIcon(a.type)}</span>
-        <span class="growth-recent-item-title">${escapeHtml(a.title || a.type)}</span>
-        <span class="growth-recent-item-time">${escapeHtml(timeAgo(a.created_at))}</span>
-      </div>
-    `).join('');
+    achievements.slice(0, 3).forEach((a) => {
+      const item = el('div', 'growth-recent-item');
+      item.appendChild(el('span', '', achievementIcon(a.type)));
+      item.appendChild(el('span', 'growth-recent-item-title', a.title || a.type));
+      item.appendChild(el('span', 'growth-recent-item-time', timeAgo(a.created_at)));
+      list.appendChild(item);
+    });
   } catch (err) {
     console.error(err);
   }
