@@ -143,12 +143,16 @@ document.getElementById('taskList').addEventListener('click', async (e) => {
     if (!btn) return;
     const id = btn.dataset.id;
     const statusMap = { start: 'in_progress', done: 'done', reopen: 'in_progress' };
-    await fetchJSON(`${API_BASE}/tasks/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: statusMap[btn.dataset.action] }),
-    });
-    loadMyTasks();
+    try {
+        await fetchJSON(`${API_BASE}/tasks/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: statusMap[btn.dataset.action] }),
+        });
+        await loadMyTasks();
+    } catch (err) {
+        console.error(err);
+    }
 });
 
 // --- Defect Radar ---
@@ -209,7 +213,7 @@ document.getElementById('bugForm').addEventListener('submit', async (e) => {
         document.getElementById('bugTitle').value = '';
         document.getElementById('bugDescription').value = '';
         document.getElementById('bugSeverity').value = 'medium';
-        refreshBugRecent();
+        await refreshBugRecent();
     } catch (err) {
         feedback.textContent = err.message || 'could not log — try again';
     }
@@ -275,7 +279,7 @@ document.getElementById('growthForm').addEventListener('submit', async (e) => {
         });
         feedback.textContent = `logged — ${type}`;
         document.getElementById('growthTitle').value = '';
-        refreshGrowthRecent();
+        await refreshGrowthRecent();
     } catch (err) {
         feedback.textContent = err.message || 'could not log';
     }
@@ -297,13 +301,14 @@ async function logCheckin(loadRating) {
         feedback.textContent = err.message || 'could not log';
     }
 }
+
 document.querySelectorAll('.checkin-btn').forEach((btn) => {
-    btn.addEventListener('click', () => logCheckin(Number(btn.dataset.rating)));
+    btn.addEventListener('click', () => {
+        void logCheckin(Number(btn.dataset.rating));
+    });
 });
 
 // --- My Overview (home) ---
-// Reuses data already fetched by the other panels rather than making
-// duplicate API calls — this just reads from the same lists.
 
 function isThisMonth(isoString) {
     const d = new Date(isoString.replace(' ', 'T') + 'Z');
@@ -313,9 +318,6 @@ function isThisMonth(isoString) {
 
 async function updateOverview() {
     try {
-        // Clock status — fetched independently here rather than relying on
-        // refreshClockStatus's shared variables, since both run on startup and
-        // the timing between two separate async calls isn't guaranteed.
         const status = await fetchJSON(`${API_BASE}/time-logs/status`);
         document.getElementById('ovClockStatus').textContent = status?.clockedIn ? 'Clocked in' : 'Clocked out';
         document.getElementById('ovClockElapsed').textContent =
@@ -323,21 +325,18 @@ async function updateOverview() {
                 ? `Since ${new Date(status.openEntry.start_time).toLocaleTimeString()}`
                 : '\u00A0';
 
-        // Tasks
         const tasks = await fetchJSON(`${API_BASE}/tasks`);
         const mineTasks = (tasks || []).filter((t) => t.assignee_id === currentUser.developer_id);
         const inProgress = mineTasks.filter((t) => t.status === 'in_progress').length;
         document.getElementById('ovTaskCount').textContent = mineTasks.length;
         document.getElementById('ovTaskInProgress').textContent = `${inProgress} in progress`;
 
-        // Achievements this month
         const achievements = await fetchJSON(`${API_BASE}/achievements`);
         const mineAchievements = (achievements || []).filter(
             (a) => a.developer_id === currentUser.developer_id && isThisMonth(a.created_at)
         );
         document.getElementById('ovAchievementCount').textContent = mineAchievements.length;
 
-        // Notes from manager
         const recs = await fetchJSON(`${API_BASE}/recommendations`);
         document.getElementById('ovRecCount').textContent = (recs || []).length;
     } catch (err) {
@@ -346,7 +345,11 @@ async function updateOverview() {
 }
 
 document.getElementById('logoutBtn').addEventListener('click', async () => {
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    try {
+        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    } catch (err) {
+        console.error(err);
+    }
     window.location.href = 'login.html';
 });
 
@@ -372,7 +375,7 @@ function formatElapsed(ms) {
 }
 
 function startElapsedTimer() {
-    stopElapsedTimer(); // avoid stacking multiple intervals
+    stopElapsedTimer();
     const elapsedEl = document.getElementById('clockElapsed');
 
     function tick() {
@@ -381,7 +384,7 @@ function startElapsedTimer() {
         elapsedEl.textContent = `Elapsed: ${formatElapsed(ms)}`;
     }
 
-    tick(); // show immediately, don't wait a full second for the first update
+    tick();
     elapsedTimerId = setInterval(tick, 1000);
 }
 
@@ -458,18 +461,23 @@ document.getElementById('clockToggleBtn').addEventListener('click', async () => 
     }
 });
 
+// --- Startup ---
 (async () => {
     const user = await checkAuthAndRole();
     if (!user) return;
     currentUser = user;
     document.getElementById('currentUser').textContent = user.username;
-    loadMyTasks();
-    refreshGrowthRecent();
-    refreshClockStatus();
-    refreshTimeLogRecent();
-    loadRecommendations();
-    refreshBugRecent();
-    updateOverview();
-    setInterval(loadMyTasks, 15000);
-    setInterval(updateOverview, 15000);
+
+    await Promise.all([
+        loadMyTasks(),
+        refreshGrowthRecent(),
+        refreshClockStatus(),
+        refreshTimeLogRecent(),
+        loadRecommendations(),
+        refreshBugRecent(),
+        updateOverview(),
+    ]);
+
+    setInterval(() => { void loadMyTasks(); }, 15000);
+    setInterval(() => { void updateOverview(); }, 15000);
 })();
