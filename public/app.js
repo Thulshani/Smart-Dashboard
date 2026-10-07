@@ -33,11 +33,6 @@ const METRIC_TIPS = {
 };
 
 // --- Sidebar navigation ---
-// Switches which panel is visible. All existing element IDs are unchanged
-// from before this restructure — only their DOM nesting/visibility changed,
-// so every loadAll/renderMetrics/event-listener call below still works
-// exactly as it did on the single long-scroll page.
-
 document.querySelectorAll('.sidebar-link').forEach((link) => {
   link.addEventListener('click', () => {
     if (link.id === 'manageUsersLink') {
@@ -56,7 +51,6 @@ async function fetchJSON(url, options = {}) {
   const res = await fetch(url, { ...options, credentials: 'include' });
 
   if (res.status === 401) {
-    // Session missing or expired — bounce to login
     window.location.href = 'login.html';
     return null;
   }
@@ -76,8 +70,6 @@ async function checkAuthOrRedirect() {
     return null;
   }
   const user = await res.json();
-  // This page is the manager/admin view. Developers/QA belong on their
-  // activity-only page instead.
   if (user.role === 'developer' || user.role === 'qa') {
     window.location.href = 'my-activity.html';
     return null;
@@ -88,7 +80,6 @@ async function checkAuthOrRedirect() {
 function statusColorFor(score, inverted = false) {
   if (score === null || score === undefined) return null;
   if (inverted) {
-    // For burnout-style metrics, HIGH score = bad. Flip the thresholds.
     if (score < 40) return 'good';
     if (score < 70) return 'warn';
     return 'bad';
@@ -98,15 +89,32 @@ function statusColorFor(score, inverted = false) {
   return 'bad';
 }
 
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str == null ? '' : String(str);
+  return div.innerHTML;
+}
+
+/**
+ * XSS-safe metrics renderer.
+ * Builds cards with DOM APIs + textContent so API data never goes into innerHTML raw.
+ */
 function renderMetrics(summary) {
   const grid = document.getElementById('metricsGrid');
   const strip = document.getElementById('pipelineStrip');
   grid.innerHTML = '';
   strip.innerHTML = '';
 
-  METRIC_DEFS.forEach(def => {
-    const data = summary[def.key];
-    const score = data ? data.score : null;
+  METRIC_DEFS.forEach((def) => {
+    const data = summary && summary[def.key] ? summary[def.key] : null;
+
+    // Coerce score to a finite number or null — never trust raw API strings for HTML
+    let score = null;
+    if (data && data.score !== null && data.score !== undefined && data.score !== '') {
+      const n = Number(data.score);
+      score = Number.isFinite(n) ? n : null;
+    }
+
     const statusClass = statusColorFor(score, def.inverted);
 
     // Pipeline strip segment
@@ -118,27 +126,72 @@ function renderMetrics(summary) {
     const card = document.createElement('div');
     card.className = 'metric-card' + (def.wired ? '' : ' placeholder');
     if (statusClass) {
-      const colorVar = statusClass === 'good' ? 'var(--accent-good)'
-          : statusClass === 'warn' ? 'var(--accent-warn)'
-              : 'var(--accent-bad)';
+      const colorVar =
+          statusClass === 'good' ? 'var(--accent-good)'
+              : statusClass === 'warn' ? 'var(--accent-warn)'
+                  : 'var(--accent-bad)';
       card.style.setProperty('--status-color', colorVar);
     }
 
-    const valueDisplay = score === null || score === undefined
-        ? '—'
-        : `${score}<span class="unit">${def.unit}</span>`;
+    // Label
+    const labelEl = document.createElement('p');
+    labelEl.className = 'metric-label';
+    labelEl.textContent = def.label;
+    card.appendChild(labelEl);
 
-    const subText = !def.wired
-        ? 'Not built yet'
-        : (data && data.total !== undefined ? `${data.onTime}/${data.total} on time` : (data && data.message) || '');
+    // Value (number only)
+    const valueEl = document.createElement('div');
+    valueEl.className = 'metric-value';
+    if (score === null) {
+      valueEl.textContent = '—';
+    } else {
+      valueEl.textContent = String(score);
+      if (def.unit) {
+        const unitSpan = document.createElement('span');
+        unitSpan.className = 'unit';
+        unitSpan.textContent = def.unit;
+        valueEl.appendChild(unitSpan);
+      }
+    }
+    card.appendChild(valueEl);
 
-    card.innerHTML = `
-      <p class="metric-label">${def.label}</p>
-      <div class="metric-value">${valueDisplay}</div>
-      <p class="metric-sub">${subText}</p>
-      ${statusClass ? `<span class="metric-status">${statusClass === 'good' ? 'on track' : statusClass === 'warn' ? 'monitor' : 'at risk'}</span>` : ''}
-      ${dateFilter.developer_id ? `<button class="rec-btn" data-metric="${def.key}" data-label="${def.label}">💡 Recommend</button>` : ''}
-    `;
+    // Sub text
+    const subEl = document.createElement('p');
+    subEl.className = 'metric-sub';
+    if (!def.wired) {
+      subEl.textContent = 'Not built yet';
+    } else if (data && data.total !== undefined) {
+      const onTime = Number(data.onTime) || 0;
+      const total = Number(data.total) || 0;
+      subEl.textContent = `${onTime}/${total} on time`;
+    } else if (data && data.message) {
+      subEl.textContent = String(data.message);
+    } else {
+      subEl.textContent = '';
+    }
+    card.appendChild(subEl);
+
+    // Status badge
+    if (statusClass) {
+      const statusEl = document.createElement('span');
+      statusEl.className = 'metric-status';
+      statusEl.textContent =
+          statusClass === 'good' ? 'on track'
+              : statusClass === 'warn' ? 'monitor'
+                  : 'at risk';
+      card.appendChild(statusEl);
+    }
+
+    // Recommend button
+    if (dateFilter.developer_id) {
+      const recBtn = document.createElement('button');
+      recBtn.className = 'rec-btn';
+      recBtn.dataset.metric = def.key;
+      recBtn.dataset.label = def.label;
+      recBtn.textContent = '💡 Recommend';
+      card.appendChild(recBtn);
+    }
+
     grid.appendChild(card);
   });
 }
@@ -148,8 +201,6 @@ function formatDate(d) {
   return d;
 }
 
-// Returns the action buttons for a task row, based on its current status.
-// todo -> in_progress -> done, with the ability to step back at each stage.
 function taskActionsFor(task) {
   const buttons = [];
 
@@ -175,14 +226,14 @@ function renderTasks(tasks) {
     return;
   }
 
-  list.innerHTML = tasks.map(task => `
-    <div class="task-row" data-id="${task.id}">
-      <span class="task-status-dot ${task.status}"></span>
+  list.innerHTML = tasks.map((task) => `
+    <div class="task-row" data-id="${escapeHtml(String(task.id))}">
+      <span class="task-status-dot ${escapeHtml(task.status || '')}"></span>
       <span class="task-title ${task.status === 'done' ? 'done' : ''}">${escapeHtml(task.title)}</span>
       <span class="task-meta">
-        <span class="task-priority ${task.priority}">${task.priority}</span>
+        <span class="task-priority ${escapeHtml(task.priority || '')}">${escapeHtml(task.priority || '')}</span>
         ${task.status === 'in_progress' ? '<span class="task-inprogress-tag">in progress</span>' : ''}
-        ${task.due_date ? `<span>due ${formatDate(task.due_date)}</span>` : ''}
+        ${task.due_date ? `<span>due ${escapeHtml(formatDate(task.due_date))}</span>` : ''}
         ${task.assignee_name ? `<span>${escapeHtml(task.assignee_name)}</span>` : ''}
       </span>
       <span class="task-actions">
@@ -192,16 +243,7 @@ function renderTasks(tasks) {
   `).join('');
 }
 
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
 // --- Developers ---
-// Populates the three assignee dropdowns (task form, growth log, collab
-// log) once on load. Developers list rarely changes mid-session, so this
-// doesn't need to be part of the 15s polling loop.
 
 async function loadDevelopers() {
   try {
@@ -215,7 +257,7 @@ async function loadDevelopers() {
     const filterSelect = document.getElementById('filterDeveloper');
 
     const options = developers.map((d) =>
-        `<option value="${d.id}">${escapeHtml(d.name)}</option>`
+        `<option value="${escapeHtml(String(d.id))}">${escapeHtml(d.name)}</option>`
     ).join('');
 
     taskSelect.innerHTML = '<option value="">Unassigned</option>' + options;
@@ -245,18 +287,26 @@ async function loadAll() {
       fetchJSON(buildSummaryUrl()),
       fetchJSON(`${API_BASE}/tasks`),
     ]);
+    if (!summary) return;
+
     renderMetrics(summary);
-    renderTasks(tasks);
+    renderTasks(tasks || []);
     document.getElementById('lastUpdated').textContent =
         'updated ' + new Date().toLocaleTimeString();
 
     const growthScore = summary.learningGrowth && summary.learningGrowth.score;
-    document.getElementById('growthScoreLabel').textContent =
-        growthScore === null || growthScore === undefined ? '—' : `${growthScore}%`;
+    const growthEl = document.getElementById('growthScoreLabel');
+    if (growthEl) {
+      growthEl.textContent =
+          growthScore === null || growthScore === undefined ? '—' : `${Number(growthScore)}%`;
+    }
 
     const collabScore = summary.collaborationIndex && summary.collaborationIndex.score;
-    document.getElementById('collabScoreLabel').textContent =
-        collabScore === null || collabScore === undefined ? '—' : `${collabScore}%`;
+    const collabEl = document.getElementById('collabScoreLabel');
+    if (collabEl) {
+      collabEl.textContent =
+          collabScore === null || collabScore === undefined ? '—' : `${Number(collabScore)}%`;
+    }
   } catch (err) {
     document.getElementById('lastUpdated').textContent = 'connection error';
     console.error(err);
@@ -301,7 +351,7 @@ document.getElementById('dateFilterForm').addEventListener('submit', (e) => {
   dateFilter.from = document.getElementById('filterFrom').value;
   dateFilter.to = document.getElementById('filterTo').value;
   dateFilter.developer_id = document.getElementById('filterDeveloper').value;
-  loadAll();
+  void loadAll();
 });
 
 document.getElementById('clearFilterBtn').addEventListener('click', () => {
@@ -309,7 +359,7 @@ document.getElementById('clearFilterBtn').addEventListener('click', () => {
   document.getElementById('filterFrom').value = '';
   document.getElementById('filterTo').value = '';
   document.getElementById('filterDeveloper').value = '';
-  loadAll();
+  void loadAll();
 });
 
 document.getElementById('taskForm').addEventListener('submit', async (e) => {
@@ -321,15 +371,18 @@ document.getElementById('taskForm').addEventListener('submit', async (e) => {
 
   if (!title) return;
 
-  await fetchJSON(`${API_BASE}/tasks`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, assignee_id, priority, due_date }),
-  });
-
-  e.target.reset();
-  document.getElementById('taskPriority').value = 'medium';
-  loadAll();
+  try {
+    await fetchJSON(`${API_BASE}/tasks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, assignee_id, priority, due_date }),
+    });
+    e.target.reset();
+    document.getElementById('taskPriority').value = 'medium';
+    await loadAll();
+  } catch (err) {
+    console.error(err);
+  }
 });
 
 document.getElementById('taskList').addEventListener('click', async (e) => {
@@ -339,46 +392,50 @@ document.getElementById('taskList').addEventListener('click', async (e) => {
   const id = btn.dataset.id;
   const action = btn.dataset.action;
 
-  if (action === 'delete') {
-    await fetchJSON(`${API_BASE}/tasks/${id}`, { method: 'DELETE' });
-  } else if (action === 'start') {
-    await fetchJSON(`${API_BASE}/tasks/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'in_progress' }),
-    });
-  } else if (action === 'done') {
-    await fetchJSON(`${API_BASE}/tasks/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'done' }),
-    });
-  } else if (action === 'pause') {
-    await fetchJSON(`${API_BASE}/tasks/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'todo' }),
-    });
-  } else if (action === 'reopen') {
-    await fetchJSON(`${API_BASE}/tasks/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'in_progress' }),
-    });
+  try {
+    if (action === 'delete') {
+      await fetchJSON(`${API_BASE}/tasks/${id}`, { method: 'DELETE' });
+    } else if (action === 'start') {
+      await fetchJSON(`${API_BASE}/tasks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'in_progress' }),
+      });
+    } else if (action === 'done') {
+      await fetchJSON(`${API_BASE}/tasks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'done' }),
+      });
+    } else if (action === 'pause') {
+      await fetchJSON(`${API_BASE}/tasks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'todo' }),
+      });
+    } else if (action === 'reopen') {
+      await fetchJSON(`${API_BASE}/tasks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'in_progress' }),
+      });
+    }
+    await loadAll();
+  } catch (err) {
+    console.error(err);
   }
-
-  loadAll();
 });
 
 document.getElementById('logoutBtn').addEventListener('click', async () => {
-  await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+  try {
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+  } catch (err) {
+    console.error(err);
+  }
   window.location.href = 'login.html';
 });
 
 // --- Defect Radar ---
-// JIRA-style: title, description, severity, then the same two outcome
-// buttons as before — matching the Developer/QA "My Activity" page so the
-// panel looks and behaves the same regardless of which dashboard it's on.
 
 function bugSeverityIcon(severity) {
   if (severity === 'high') return '🔴';
@@ -435,12 +492,12 @@ document.getElementById('bugForm').addEventListener('submit', async (e) => {
     document.getElementById('bugTitle').value = '';
     document.getElementById('bugDescription').value = '';
     document.getElementById('bugSeverity').value = 'medium';
-    refreshBugRecent();
+    await refreshBugRecent();
+    await refreshDefectRadar();
+    await loadAll();
   } catch (err) {
     feedback.textContent = err.message || 'could not log — try again';
   }
-  await refreshDefectRadar();
-  loadAll();
 });
 
 async function refreshDefectRadar() {
@@ -453,8 +510,9 @@ async function refreshDefectRadar() {
       label.textContent = '—';
       return;
     }
-    fill.style.width = `${data.score}%`;
-    label.textContent = `${data.score}%`;
+    const score = Number(data.score) || 0;
+    fill.style.width = `${score}%`;
+    label.textContent = `${score}%`;
   } catch (err) {
     label.textContent = '—';
     console.error(err);
@@ -462,8 +520,6 @@ async function refreshDefectRadar() {
 }
 
 // --- Growth Log ---
-// Same one-tap-logging spirit as Defect Radar: type what you finished,
-// tap the category, done. No multi-field form to slow people down.
 
 function achievementIcon(type) {
   if (type === 'course') return '📘';
@@ -506,7 +562,7 @@ async function refreshGrowthRecent() {
 document.getElementById('growthForm').addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  const submitter = e.submitter; // the specific button that was clicked
+  const submitter = e.submitter;
   const type = submitter ? submitter.dataset.type : null;
   const developer_id = document.getElementById('growthAssignee').value;
   const title = document.getElementById('growthTitle').value.trim();
@@ -526,18 +582,16 @@ document.getElementById('growthForm').addEventListener('submit', async (e) => {
     });
     feedback.textContent = `logged — ${type}`;
     document.getElementById('growthTitle').value = '';
+    await refreshGrowthRecent();
+    await loadAll();
   } catch (err) {
     feedback.textContent = 'could not log — try again';
     console.error(err);
   }
-
-  await refreshGrowthRecent();
-  loadAll();
 });
 
 // --- Collaboration Log ---
-// Same one-tap pattern as Defect Radar: select your name once, then tap
-// whichever type of collaboration just happened. No title needed here.
+
 async function logCollaboration(type) {
   const developer_id = document.getElementById('collabAssignee').value;
   const feedback = document.getElementById('collabFeedback');
@@ -553,19 +607,20 @@ async function logCollaboration(type) {
       body: JSON.stringify({ developer_id, type }),
     });
     feedback.textContent = `logged — ${type}`;
+    void loadAll();
   } catch (err) {
     feedback.textContent = 'could not log — try again';
     console.error(err);
   }
-  loadAll();
 }
+
 document.querySelectorAll('.collab-btn').forEach((btn) => {
-  btn.addEventListener('click', () => logCollaboration(btn.dataset.type));
+  btn.addEventListener('click', () => {
+    void logCollaboration(btn.dataset.type);
+  });
 });
 
 // --- Wellbeing Check-in ---
-// Private, supportive, one-tap. This exists to protect people, not to
-// rank or punish them — keep the copy and framing consistent with that.
 
 async function logCheckin(loadRating) {
   const developer_id = document.getElementById('checkinAssignee').value;
@@ -584,30 +639,34 @@ async function logCheckin(loadRating) {
       body: JSON.stringify({ developer_id, load_rating: loadRating }),
     });
     feedback.textContent = 'thanks for checking in';
+    void loadAll();
   } catch (err) {
     feedback.textContent = 'could not log — try again';
     console.error(err);
   }
-  loadAll();
 }
 
 document.querySelectorAll('.checkin-btn').forEach((btn) => {
-  btn.addEventListener('click', () => logCheckin(Number(btn.dataset.rating)));
+  btn.addEventListener('click', () => {
+    void logCheckin(Number(btn.dataset.rating));
+  });
 });
 
 // Require a logged-in session before showing any data
 (async () => {
   const user = await checkAuthOrRedirect();
-  if (!user) return; // already redirecting to login.html
+  if (!user) return;
   document.getElementById('currentUser').textContent = user.username;
   if (user.role === 'admin') {
     document.getElementById('manageUsersLink').style.display = 'flex';
   }
-  loadDevelopers();
-  loadAll();
-  refreshDefectRadar();
-  refreshGrowthRecent();
-  setInterval(loadAll, 15000);
-  setInterval(refreshDefectRadar, 15000);
-  setInterval(refreshGrowthRecent, 15000);
+  await loadDevelopers();
+  await Promise.all([
+    loadAll(),
+    refreshDefectRadar(),
+    refreshGrowthRecent(),
+  ]);
+  setInterval(() => { void loadAll(); }, 15000);
+  setInterval(() => { void refreshDefectRadar(); }, 15000);
+  setInterval(() => { void refreshGrowthRecent(); }, 15000);
 })();
