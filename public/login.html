@@ -11,33 +11,30 @@
 </head>
 <body class="login-body">
 
-  <div class="login-card">
-    <div class="brand" style="justify-content:center; margin-bottom: 22px;">
-      <span class="brand-mark">◧</span>
-      <div>
-        <h1 style="margin:0;">Dev &amp; QA Performance</h1>
-        <p class="brand-sub" style="margin:2px 0 0;">Sign in to continue</p>
-      </div>
+<div class="login-card">
+  <div class="brand" style="justify-content:center; margin-bottom: 22px;">
+    <span class="brand-mark">◧</span>
+    <div>
+      <h1 style="margin:0;">Dev &amp; QA Performance</h1>
+      <p class="brand-sub" style="margin:2px 0 0;">Sign in to continue</p>
     </div>
-
-    <div class="login-tabs">
-      <button class="login-tab active" data-mode="login">Sign in</button>
-      <button class="login-tab" data-mode="register">Create account</button>
-    </div>
-
-    <form id="authForm" class="login-form">
-      <label for="username">Username</label>
-      <input type="text" id="username" autocomplete="username" required />
-
-      <label for="password">Password</label>
-      <input type="password" id="password" autocomplete="current-password" required />
-
-      <p class="login-error" id="loginError"></p>
-
-      <button type="submit" id="submitBtn">Sign in</button>
-    </form>
   </div>
 
-  <script src="login.js"></script>
+  <form id="authForm" class="login-form">
+    <label for="username">Username</label>
+    <input type="text" id="username" autocomplete="username" required />
+
+    <label for="password">Password</label>
+    <input type="password" id="password" autocomplete="current-password" required />
+
+    <p class="login-error" id="loginError"></p>
+
+    <button type="submit" id="submitBtn">Sign in</button>
+  </form>
+
+  <p class="login-footnote">Don't have an account? Ask your admin to create one for you.</p>
+</div>
+
+<script src="login.js"></script>
 </body>
 </html>

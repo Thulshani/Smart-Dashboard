@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Activity — Dev &amp; QA Performance Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .app-shell { display: flex; min-height: 100vh; align-items: stretch; }
+    .sidebar {
+      width: 220px; flex-shrink: 0; background: linear-gradient(180deg, var(--panel), #101013);
+      border-right: 1px solid var(--panel-border); display: flex; flex-direction: column;
+      padding: 20px 0; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    }
+    .sidebar-brand { display: flex; align-items: center; gap: 8px; padding: 0 20px 20px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; color: var(--text-primary); }
+    .sidebar-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+    .sidebar-link {
+      display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+      padding: 10px 20px; background: none; border: none; cursor: pointer;
+      font-size: 14px; color: var(--text-muted); font-family: inherit;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .sidebar-link:hover { background: rgba(255, 122, 26, 0.08); color: var(--text-primary); }
+    .sidebar-link.active { background: rgba(255, 122, 26, 0.14); color: var(--accent-orange-bright); font-weight: 600; border-left: 3px solid var(--accent-orange); padding-left: 17px; }
+    .sidebar-footer { padding: 16px 20px 0; border-top: 1px solid var(--panel-border); margin-top: 12px; font-size: 13px; }
+    .sidebar-footer #currentUser { display: block; margin-bottom: 8px; color: var(--text-muted); }
+    .content-area { flex: 1; min-width: 0; padding: 24px 32px; overflow-y: auto; }
+    .page-section { display: none; }
+    .page-section.active { display: block; }
+
+    /* My Overview home cards */
+    .overview-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 8px; }
+    .overview-card { background: linear-gradient(160deg, var(--panel), #131317); border: 1px solid var(--panel-border); border-radius: 10px; padding: 18px; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35); }
+    .overview-card .ov-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin: 0 0 6px; }
+    .overview-card .ov-value { font-size: 26px; font-weight: 700; margin: 0; color: var(--text-primary); }
+    .overview-card .ov-sub { font-size: 13px; color: var(--text-muted); margin: 4px 0 0; }
+  </style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-mark">◧</span>
+      <span>My Activity</span>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="sidebar-link active" data-section="overview"> My Overview</button>
+      <button class="sidebar-link" data-section="radar"> Defect Radar</button>
+      <button class="sidebar-link" data-section="growth"> Growth Log</button>
+      <button class="sidebar-link" data-section="checkin"> Check-in</button>
+      <button class="sidebar-link" data-section="timetracker"> Time Tracker</button>
+      <button class="sidebar-link" data-section="tasks"> My Tasks</button>
+      <button class="sidebar-link" data-section="notes"> Notes from Manager</button>
+    </nav>
+    <div class="sidebar-footer">
+      <span id="currentUser"></span>
+      <button id="logoutBtn" class="logout-btn">Log out</button>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="content-area">
+
+    <!-- MY OVERVIEW (home) -->
+    <section id="section-overview" class="page-section active">
+      <div class="overview-grid">
+        <div class="overview-card">
+          <p class="ov-label">Clock status</p>
+          <p class="ov-value" id="ovClockStatus">—</p>
+          <p class="ov-sub" id="ovClockElapsed">&nbsp;</p>
+        </div>
+        <div class="overview-card">
+          <p class="ov-label">My tasks</p>
+          <p class="ov-value" id="ovTaskCount">—</p>
+          <p class="ov-sub" id="ovTaskInProgress">&nbsp;</p>
+        </div>
+        <div class="overview-card">
+          <p class="ov-label">Achievements this month</p>
+          <p class="ov-value" id="ovAchievementCount">—</p>
+          <p class="ov-sub">&nbsp;</p>
+        </div>
+        <div class="overview-card">
+          <p class="ov-label">Notes from manager</p>
+          <p class="ov-value" id="ovRecCount">—</p>
+          <p class="ov-sub">&nbsp;</p>
+        </div>
+      </div>
+      <p class="radar-sub" style="margin-top: 16px;">Use the sidebar to log a bug, an achievement, a check-in, clock in/out, or view your tasks and manager notes.</p>
+    </section>
+
+    <!-- DEFECT RADAR -->
+    <section id="section-radar" class="page-section">
+      <section class="panel radar-panel">
+        <div class="panel-header">
+          <h2>Defect Radar</h2>
+        </div>
+        <p class="radar-sub">Log a bug the moment it's found.</p>
+
+        <form id="bugForm" class="growth-form">
+          <input type="text" id="bugTitle" placeholder="Bug title (e.g. Login fails on Safari)" required />
+          <textarea id="bugDescription" placeholder="Description (optional) — steps to reproduce, expected vs actual, etc." rows="4"></textarea>
+          <select id="bugSeverity" required>
+            <option value="low">Low severity</option>
+            <option value="medium" selected>Medium severity</option>
+            <option value="high">High severity</option>
+          </select>
+          <div class="radar-buttons">
+            <button type="submit" data-outcome="caught" class="radar-btn caught">
+              <span class="radar-icon" aria-hidden="true">▲</span>
+              <span class="radar-label">Caught in QA</span>
+              <span class="radar-desc">found before release</span>
+            </button>
+            <button type="submit" data-outcome="escaped" class="radar-btn escaped">
+              <span class="radar-icon" aria-hidden="true">●</span>
+              <span class="radar-label">Escaped to Prod</span>
+              <span class="radar-desc">found after release</span>
+            </button>
+          </div>
+        </form>
+
+        <p id="radarFeedback" class="radar-feedback">&nbsp;</p>
+
+        <div class="growth-recent">
+          <p class="growth-recent-title">Recent bugs</p>
+          <div id="bugRecentList">
+            <p class="empty-state">No bugs logged yet.</p>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <!-- GROWTH LOG -->
+    <section id="section-growth" class="page-section">
+      <section class="panel growth-panel">
+        <div class="panel-header">
+          <h2>Growth Log</h2>
+        </div>
+        <p class="radar-sub">What did you finish? Type it, then tap the category.</p>
+        <form id="growthForm" class="growth-form">
+          <input type="text" id="growthTitle" placeholder="e.g. React Advanced Patterns" required />
+          <div class="growth-buttons">
+            <button type="submit" data-type="course" class="growth-btn">
+              <span class="growth-label">Course done</span>
+              <span class="growth-points">+15 pts</span>
+            </button>
+            <button type="submit" data-type="certification" class="growth-btn">
+              <span class="growth-label">Certification</span>
+              <span class="growth-points">+25 pts</span>
+            </button>
+            <button type="submit" data-type="tool" class="growth-btn">
+              <span class="growth-label">New tool</span>
+              <span class="growth-points">+10 pts</span>
+            </button>
+          </div>
+        </form>
+        <p id="growthFeedback" class="radar-feedback">&nbsp;</p>
+        <div class="growth-recent">
+          <p class="growth-recent-title">Your recent</p>
+          <div id="growthRecentList">
+            <p class="empty-state">No achievements logged yet.</p>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <!-- WELLBEING CHECK-IN -->
+    <section id="section-checkin" class="page-section">
+      <section class="panel checkin-panel">
+        <div class="panel-header">
+          <h2>How's your workload?</h2>
+        </div>
+        <p class="radar-sub">A quick, private check-in — this helps your manager spot burnout early, not track performance.</p>
+        <div class="checkin-buttons">
+          <button type="button" data-rating="1" class="checkin-btn">😌 Fine</button>
+          <button type="button" data-rating="2" class="checkin-btn">🙂 Okay</button>
+          <button type="button" data-rating="3" class="checkin-btn">😐 Busy</button>
+          <button type="button" data-rating="4" class="checkin-btn">😓 Stretched</button>
+          <button type="button" data-rating="5" class="checkin-btn">🥵 Overwhelmed</button>
+        </div>
+        <p id="checkinFeedback" class="radar-feedback">&nbsp;</p>
+      </section>
+    </section>
+
+    <!-- TIME TRACKER -->
+    <section id="section-timetracker" class="page-section">
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Time Tracker</h2>
+          <span class="panel-count" id="clockStatusLabel">—</span>
+        </div>
+        <p class="radar-sub">Clock in when you start work, clock out when you're done — this feeds the Burnout Risk overtime signal honestly.</p>
+        <button id="clockToggleBtn" class="radar-btn caught" style="width: 100%; margin-bottom: 12px;">
+          <span class="radar-label" id="clockToggleLabel">Loading…</span>
+        </button>
+        <p id="clockElapsed" class="radar-feedback" style="font-weight: 600;">&nbsp;</p>
+        <p id="clockFeedback" class="radar-feedback">&nbsp;</p>
+        <div class="growth-recent">
+          <p class="growth-recent-title">Recent</p>
+          <div id="timeLogRecentList">
+            <p class="empty-state">No time logs yet.</p>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <!-- MY TASKS -->
+    <section id="section-tasks" class="page-section">
+      <section class="panel tasks-panel">
+        <div class="panel-header">
+          <h2>My Tasks</h2>
+          <span class="panel-count" id="taskCount">0</span>
+        </div>
+        <div class="task-list" id="taskList">
+          <p class="empty-state">No tasks assigned yet.</p>
+        </div>
+      </section>
+    </section>
+
+    <!-- MANAGER NOTES -->
+    <section id="section-notes" class="page-section">
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Notes from your manager</h2>
+          <span class="panel-count" id="recCount">0</span>
+        </div>
+        <div class="task-list" id="recommendationsList">
+          <p class="empty-state">No notes yet.</p>
+        </div>
+      </section>
+    </section>
+
+  </main>
+</div>
+
+<script src="my-activity.js"></script>
+</body>
+</html>

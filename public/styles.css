@@ -1,25 +1,30 @@
 /* ---------------------------------------------------------
    Design tokens
-   Palette: near-black slate base, cool panels, three status
-   accents borrowed from CI/build-pipeline conventions —
-   this audience reads "pass / monitor / fail" colors daily,
-   so the dashboard speaks that language rather than a generic
-   dashboard-template palette.
+   Palette: premium black & orange. Backgrounds and panels sit
+   in near-black slate; orange is the single brand accent used
+   for CTAs, focus states and the "warn" status (they share a
+   hue on purpose — CI dashboards already read amber as
+   "monitor"). Good/bad keep green/red so pass-fail scanning
+   stays instant at a glance.
 --------------------------------------------------------- */
 :root {
-  --bg: #FFFFFF;
-  --panel: #FFFFFF;
-  --panel-border: #E1E4EA;
-  --panel-border-soft: #EEF0F4;
+  --bg: #0A0A0C;
+  --panel: #17171C;
+  --panel-border: #2B2B33;
+  --panel-border-soft: #1F1F25;
 
-  --text-primary: #1A1D23;
-  --text-muted: #6B7280;
-  --text-faint: #A6ACB8;
+  --text-primary: #F2F2F5;
+  --text-muted: #9C9CA8;
+  --text-faint: #63636D;
 
-  --accent-good: #14A897;   /* healthy / on-track */
-  --accent-warn: #D98B1E;   /* monitor / at-risk */
-  --accent-bad: #D93F3F;    /* failing / burnout risk */
-  --accent-info: #3B6FD9;   /* neutral / in-progress */
+  --accent-orange: #FF7A1A;
+  --accent-orange-bright: #FFA94D;
+  --accent-orange-dark: #C2570A;
+
+  --accent-good: #22C55E;   /* healthy / on-track */
+  --accent-warn: #FF8A1E;   /* monitor / at-risk — shares brand hue */
+  --accent-bad: #F04747;    /* failing / burnout risk */
+  --accent-info: #4C8DFF;   /* neutral / in-progress */
 
   --font-display: 'Space Grotesk', sans-serif;
   --font-body: 'Inter', sans-serif;
@@ -32,11 +37,23 @@
 
 body {
   margin: 0;
-  background: var(--bg);
+  background:
+          radial-gradient(1100px 480px at 50% -10%, rgba(255, 122, 26, 0.08), transparent 60%),
+          var(--bg);
   color: var(--text-primary);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
 }
+
+/* Premium scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb {
+  background: var(--panel-border);
+  border-radius: 100px;
+  border: 2px solid var(--bg);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--accent-orange-dark); }
 
 /* ---------------------------------------------------------
    Signature element: pipeline strip
@@ -60,6 +77,7 @@ body {
 --------------------------------------------------------- */
 .app-header {
   border-bottom: 1px solid var(--panel-border-soft);
+  background: linear-gradient(180deg, rgba(255,122,26,0.05), transparent);
 }
 .header-inner {
   max-width: 1080px;
@@ -76,7 +94,8 @@ body {
 }
 .brand-mark {
   font-size: 22px;
-  color: var(--accent-good);
+  color: var(--accent-orange);
+  text-shadow: 0 0 18px rgba(255, 122, 26, 0.5);
 }
 .brand h1 {
   font-family: var(--font-display);
@@ -84,6 +103,7 @@ body {
   font-weight: 600;
   margin: 0;
   letter-spacing: -0.01em;
+  color: var(--text-primary);
 }
 .brand-sub {
   margin: 2px 0 0;
@@ -105,20 +125,26 @@ body {
   background: var(--text-faint);
 }
 .dot-live {
-  background: var(--accent-good);
-  box-shadow: 0 0 0 3px rgba(67, 217, 200, 0.15);
+  background: var(--accent-orange);
+  box-shadow: 0 0 0 3px rgba(255, 122, 26, 0.18);
 }
 .logout-btn {
   background: transparent;
   border: 1px solid var(--panel-border);
-  border-radius: 6px;
-  padding: 5px 10px;
+  border-radius: 8px;
+  padding: 6px 12px;
   color: var(--text-muted);
   font-family: var(--font-body);
   font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
-.logout-btn:hover { border-color: var(--accent-bad); color: var(--accent-bad); }
+.logout-btn:hover {
+  border-color: var(--accent-bad);
+  color: var(--accent-bad);
+  background: rgba(240, 71, 71, 0.08);
+}
 
 /* ---------------------------------------------------------
    Layout
@@ -141,13 +167,18 @@ body {
   gap: 14px;
 }
 .metric-card {
-  background: var(--panel);
+  background: linear-gradient(160deg, var(--panel), #131317);
   border: 1px solid var(--panel-border);
   border-radius: var(--radius);
   padding: 18px 18px 16px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 1px 2px rgba(16, 20, 30, 0.04);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.metric-card:hover {
+  border-color: color-mix(in srgb, var(--status-color, var(--accent-orange)) 45%, var(--panel-border));
+  transform: translateY(-1px);
 }
 .metric-card::before {
   content: '';
@@ -155,6 +186,7 @@ body {
   left: 0; top: 0; bottom: 0;
   width: 3px;
   background: var(--status-color, var(--text-faint));
+  box-shadow: 0 0 12px var(--status-color, transparent);
 }
 .metric-label {
   font-size: 12px;
@@ -187,8 +219,9 @@ body {
   font-size: 11px;
   padding: 3px 8px;
   border-radius: 100px;
-  background: color-mix(in srgb, var(--status-color, var(--text-faint)) 18%, transparent);
+  background: color-mix(in srgb, var(--status-color, var(--text-faint)) 22%, transparent);
   color: var(--status-color, var(--text-muted));
+  border: 1px solid color-mix(in srgb, var(--status-color, var(--text-faint)) 35%, transparent);
 }
 .metric-card.placeholder {
   opacity: 0.5;
@@ -201,11 +234,11 @@ body {
    Panel (shared: tasks, defect radar)
 --------------------------------------------------------- */
 .panel {
-  background: var(--panel);
+  background: linear-gradient(160deg, var(--panel), #131317);
   border: 1px solid var(--panel-border);
   border-radius: var(--radius);
   padding: 20px 20px 8px;
-  box-shadow: 0 1px 2px rgba(16, 20, 30, 0.04);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
 }
 .panel-header {
   display: flex;
@@ -218,6 +251,7 @@ body {
   font-size: 15px;
   font-weight: 600;
   margin: 0;
+  color: var(--text-primary);
 }
 .panel-count {
   font-family: var(--font-mono);
@@ -256,7 +290,7 @@ body {
   padding: 14px 16px;
   cursor: pointer;
   text-align: left;
-  transition: border-color 0.15s ease, transform 0.1s ease, background 0.15s ease;
+  transition: border-color 0.15s ease, transform 0.1s ease, background 0.15s ease, box-shadow 0.15s ease;
   font-family: var(--font-body);
 }
 .radar-btn:hover { transform: translateY(-1px); }
@@ -264,11 +298,13 @@ body {
 
 .radar-btn.caught:hover {
   border-color: var(--accent-good);
-  background: color-mix(in srgb, var(--accent-good) 6%, var(--bg));
+  background: color-mix(in srgb, var(--accent-good) 10%, var(--bg));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-good) 30%, transparent);
 }
 .radar-btn.escaped:hover {
   border-color: var(--accent-bad);
-  background: color-mix(in srgb, var(--accent-bad) 6%, var(--bg));
+  background: color-mix(in srgb, var(--accent-bad) 10%, var(--bg));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-bad) 30%, transparent);
 }
 
 .radar-icon {
@@ -332,21 +368,41 @@ body {
   color: var(--text-primary);
   font-family: var(--font-body);
   font-size: 13px;
+  transition: border-color 0.15s ease;
+}
+.task-form input:focus,
+.task-form select:focus {
+  outline: none;
+  border-color: var(--accent-orange);
+  box-shadow: 0 0 0 3px rgba(255, 122, 26, 0.15);
 }
 .task-form input::placeholder { color: var(--text-faint); }
+
+/* Premium CTA button — used here and reused as the base
+   look for any primary action button in the app. */
 .task-form button {
-  background: var(--accent-good);
-  border: none;
-  border-radius: 6px;
-  padding: 9px 16px;
-  color: #0B1613;
+  background: linear-gradient(135deg, var(--accent-orange-bright), var(--accent-orange) 55%, var(--accent-orange-dark));
+  border: 1px solid rgba(255, 169, 77, 0.4);
+  border-radius: 8px;
+  padding: 9px 18px;
+  color: #1A0D02;
   font-family: var(--font-body);
-  font-weight: 600;
+  font-weight: 700;
   font-size: 13px;
   cursor: pointer;
   white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(255, 122, 26, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
 }
-.task-form button:hover { filter: brightness(1.08); }
+.task-form button:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+  box-shadow: 0 4px 16px rgba(255, 122, 26, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.task-form button:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(255, 122, 26, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
 
 @media (max-width: 720px) {
   .task-form { grid-template-columns: 1fr 1fr; }
@@ -382,6 +438,7 @@ body {
 .task-title {
   flex: 1;
   font-size: 13.5px;
+  color: var(--text-primary);
 }
 .task-title.done { color: var(--text-muted); text-decoration: line-through; }
 
@@ -400,9 +457,9 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
-.task-priority.low { background: rgba(139,147,163,0.15); color: var(--text-muted); }
-.task-priority.medium { background: rgba(91,141,239,0.15); color: var(--accent-info); }
-.task-priority.high { background: rgba(232,93,93,0.15); color: var(--accent-bad); }
+.task-priority.low { background: rgba(156, 156, 168, 0.16); color: var(--text-muted); }
+.task-priority.medium { background: rgba(76, 141, 255, 0.16); color: var(--accent-info); }
+.task-priority.high { background: rgba(240, 71, 71, 0.18); color: var(--accent-bad); }
 
 .task-actions {
   display: flex;
@@ -410,16 +467,17 @@ body {
   flex-shrink: 0;
 }
 .task-actions button {
-  background: transparent;
+  background: var(--bg);
   border: 1px solid var(--panel-border);
-  border-radius: 6px;
-  padding: 5px 9px;
+  border-radius: 7px;
+  padding: 5px 10px;
   color: var(--text-muted);
   font-size: 11.5px;
   cursor: pointer;
   font-family: var(--font-body);
+  transition: border-color 0.15s ease, color 0.15s ease;
 }
-.task-actions button:hover { border-color: var(--text-muted); color: var(--text-primary); }
+.task-actions button:hover { border-color: var(--accent-orange); color: var(--accent-orange-bright); }
 .task-actions button.danger:hover { border-color: var(--accent-bad); color: var(--accent-bad); }
 
 .empty-state {
@@ -428,3 +486,157 @@ body {
   padding: 20px 0;
   text-align: center;
 }
+
+/* ---------------------------------------------------------
+   Form fields — Defect Radar, Growth Log, Collaboration,
+   Check-in. Shared professional input / textarea / select look
+   with an orange focus ring.
+--------------------------------------------------------- */
+.growth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.panel input[type="text"],
+.panel input[type="email"],
+.panel input[type="password"],
+.panel input[type="number"],
+.panel input[type="search"],
+.panel textarea,
+.panel select {
+  width: 100%;
+  background: #0E0E12;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 11px 14px;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  line-height: 1.5;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.panel textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+.panel input::placeholder,
+.panel textarea::placeholder {
+  color: var(--text-faint);
+}
+.panel input:hover,
+.panel textarea:hover,
+.panel select:hover {
+  border-color: #3B3B45;
+}
+.panel input:focus,
+.panel textarea:focus,
+.panel select:focus {
+  outline: none;
+  background: #111116;
+  border-color: var(--accent-orange);
+  box-shadow: 0 0 0 3px rgba(255, 122, 26, 0.18), inset 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.panel select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  padding-right: 38px;
+  background-image:
+          url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1.5l5 5 5-5' fill='none' stroke='%23FF7A1A' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+.panel select option {
+  background: #17171C;
+  color: var(--text-primary);
+}
+
+/* Growth / Collaboration / Check-in button groups */
+.growth-buttons,
+.collab-buttons,
+.checkin-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 14px 0 16px;
+}
+.growth-btn,
+.collab-btn,
+.checkin-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  background: var(--bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+}
+.growth-btn:hover,
+.collab-btn:hover,
+.checkin-btn:hover {
+  border-color: var(--accent-orange);
+  background: rgba(255, 122, 26, 0.08);
+  box-shadow: 0 0 0 1px rgba(255, 122, 26, 0.25);
+  transform: translateY(-1px);
+}
+.growth-btn:active,
+.collab-btn:active,
+.checkin-btn:active { transform: translateY(0); }
+.growth-label,
+.collab-label { font-weight: 600; }
+.growth-points,
+.collab-points {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--accent-orange-bright);
+}
+
+/* "Recent" lists under each form */
+.growth-recent { margin-top: 8px; }
+.growth-recent-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin: 0 0 8px;
+}
+
+/* ---------------------------------------------------------
+   "Back to dashboard" link (Manage Users page header)
+   Styled as a highlighted pill button so it's easy to spot.
+--------------------------------------------------------- */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 12px;
+  padding: 7px 14px;
+  background: rgba(255, 122, 26, 0.12);
+  border: 1px solid rgba(255, 122, 26, 0.55);
+  border-radius: 8px;
+  color: var(--accent-orange-bright);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 0 14px rgba(255, 122, 26, 0.15);
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.back-link:hover {
+  background: linear-gradient(135deg, var(--accent-orange-bright), var(--accent-orange) 55%, var(--accent-orange-dark));
+  color: #1A0D02;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(255, 122, 26, 0.45);
+}
+.back-link:active { transform: translateY(0); }

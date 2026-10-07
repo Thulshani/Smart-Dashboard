@@ -4,17 +4,19 @@
   justify-content: center;
   min-height: 100vh;
   padding: 20px;
-  background: #FAFBFC;
+  background:
+          radial-gradient(900px 420px at 50% 0%, rgba(255, 122, 26, 0.10), transparent 60%),
+          var(--bg);
 }
 
 .login-card {
   width: 100%;
   max-width: 360px;
-  background: var(--panel);
+  background: linear-gradient(160deg, var(--panel), #131317);
   border: 1px solid var(--panel-border);
   border-radius: var(--radius);
   padding: 28px 26px 24px;
-  box-shadow: 0 4px 16px rgba(16, 20, 30, 0.06);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 122, 26, 0.06);
 }
 
 .login-tabs {
@@ -37,10 +39,13 @@
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 .login-tab.active {
-  background: var(--panel-border);
-  color: var(--text-primary);
+  background: linear-gradient(135deg, var(--accent-orange-bright), var(--accent-orange));
+  color: #1A0D02;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(255, 122, 26, 0.35);
 }
 
 .login-form {
@@ -61,19 +66,38 @@
   color: var(--text-primary);
   font-family: var(--font-body);
   font-size: 14px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
+.login-form input:focus {
+  outline: none;
+  border-color: var(--accent-orange);
+  box-shadow: 0 0 0 3px rgba(255, 122, 26, 0.15);
+}
+
+/* Premium CTA — same gradient/glow treatment as the primary
+   button in styles.css, kept consistent across the app. */
 .login-form button[type="submit"] {
   margin-top: 18px;
-  background: var(--accent-good);
-  border: none;
-  border-radius: 6px;
+  background: linear-gradient(135deg, var(--accent-orange-bright), var(--accent-orange) 55%, var(--accent-orange-dark));
+  border: 1px solid rgba(255, 169, 77, 0.4);
+  border-radius: 8px;
   padding: 11px 0;
-  color: #0B1613;
-  font-weight: 600;
+  color: #1A0D02;
+  font-weight: 700;
   font-size: 14px;
   cursor: pointer;
+  box-shadow: 0 2px 10px rgba(255, 122, 26, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
 }
-.login-form button[type="submit"]:hover { filter: brightness(1.08); }
+.login-form button[type="submit"]:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+  box-shadow: 0 4px 16px rgba(255, 122, 26, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.login-form button[type="submit"]:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(255, 122, 26, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
 
 .login-error {
   color: var(--accent-bad);

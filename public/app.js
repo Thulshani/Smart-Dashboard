@@ -15,7 +15,42 @@ const METRIC_DEFS = [
   { key: 'learningGrowth',        label: 'Learning & Growth',       unit: '',  wired: true },
   { key: 'collaborationIndex',    label: 'Collaboration Index',     unit: '',  wired: true },
   { key: 'automationStrength',    label: 'Automation Strength',     unit: '',  wired: true },
+  { key: 'burnoutRisk',           label: 'Burnout Risk',            unit: '%', wired: true, inverted: true },
 ];
+
+// Suggested starter text for the "Send recommendation" prompt — managers
+// can edit freely before sending, this is just a helpful default.
+const METRIC_TIPS = {
+  deliveryReliability: "Let's review your current task load and due dates together — happy to reprioritize if needed.",
+  defectPrevention: "Let's build in a bit more testing time before marking tasks done — maybe pair with QA on tricky areas.",
+  qualityImpact: "Let's carve out time to add test coverage on recent work and look at what SonarCloud is flagging.",
+  technicalDebtExposure: "Let's schedule some time to refactor the flagged files — I can help prioritize which ones matter most.",
+  focusStability: "I've noticed you're juggling a few things at once — let's talk about limiting work-in-progress to one task at a time.",
+  learningGrowth: "Would a course or certification help this sprint? Happy to suggest a few options if useful.",
+  collaborationIndex: "Let's find a PR to review together, or a teammate you could pair with this week.",
+  automationStrength: "Let's look at adding a few more automated tests, or dig into any flaky tests together.",
+  burnoutRisk: "I've noticed some signs you might be stretched thin — let's talk about redistributing tasks or taking some time to recover.",
+};
+
+// --- Sidebar navigation ---
+// Switches which panel is visible. All existing element IDs are unchanged
+// from before this restructure — only their DOM nesting/visibility changed,
+// so every loadAll/renderMetrics/event-listener call below still works
+// exactly as it did on the single long-scroll page.
+
+document.querySelectorAll('.sidebar-link').forEach((link) => {
+  link.addEventListener('click', () => {
+    if (link.id === 'manageUsersLink') {
+      window.location.href = 'admin-users.html';
+      return;
+    }
+    document.querySelectorAll('.sidebar-link').forEach((l) => l.classList.remove('active'));
+    link.classList.add('active');
+    document.querySelectorAll('.page-section').forEach((s) => s.classList.remove('active'));
+    const target = document.getElementById(`section-${link.dataset.section}`);
+    if (target) target.classList.add('active');
+  });
+});
 
 async function fetchJSON(url, options = {}) {
   const res = await fetch(url, { ...options, credentials: 'include' });
@@ -40,11 +75,24 @@ async function checkAuthOrRedirect() {
     window.location.href = 'login.html';
     return null;
   }
-  return res.json();
+  const user = await res.json();
+  // This page is the manager/admin view. Developers/QA belong on their
+  // activity-only page instead.
+  if (user.role === 'developer' || user.role === 'qa') {
+    window.location.href = 'my-activity.html';
+    return null;
+  }
+  return user;
 }
 
-function statusColorFor(score) {
+function statusColorFor(score, inverted = false) {
   if (score === null || score === undefined) return null;
+  if (inverted) {
+    // For burnout-style metrics, HIGH score = bad. Flip the thresholds.
+    if (score < 40) return 'good';
+    if (score < 70) return 'warn';
+    return 'bad';
+  }
   if (score >= 80) return 'good';
   if (score >= 50) return 'warn';
   return 'bad';
@@ -59,7 +107,7 @@ function renderMetrics(summary) {
   METRIC_DEFS.forEach(def => {
     const data = summary[def.key];
     const score = data ? data.score : null;
-    const statusClass = statusColorFor(score);
+    const statusClass = statusColorFor(score, def.inverted);
 
     // Pipeline strip segment
     const seg = document.createElement('span');
@@ -89,6 +137,7 @@ function renderMetrics(summary) {
       <div class="metric-value">${valueDisplay}</div>
       <p class="metric-sub">${subText}</p>
       ${statusClass ? `<span class="metric-status">${statusClass === 'good' ? 'on track' : statusClass === 'warn' ? 'monitor' : 'at risk'}</span>` : ''}
+      ${dateFilter.developer_id ? `<button class="rec-btn" data-metric="${def.key}" data-label="${def.label}">💡 Recommend</button>` : ''}
     `;
     grid.appendChild(card);
   });
@@ -162,6 +211,8 @@ async function loadDevelopers() {
     const taskSelect = document.getElementById('taskAssignee');
     const growthSelect = document.getElementById('growthAssignee');
     const collabSelect = document.getElementById('collabAssignee');
+    const checkinSelect = document.getElementById('checkinAssignee');
+    const filterSelect = document.getElementById('filterDeveloper');
 
     const options = developers.map((d) =>
         `<option value="${d.id}">${escapeHtml(d.name)}</option>`
@@ -170,15 +221,28 @@ async function loadDevelopers() {
     taskSelect.innerHTML = '<option value="">Unassigned</option>' + options;
     growthSelect.innerHTML = '<option value="">Select your name…</option>' + options;
     collabSelect.innerHTML = '<option value="">Select your name…</option>' + options;
+    checkinSelect.innerHTML = '<option value="">Select your name…</option>' + options;
+    filterSelect.innerHTML = '<option value="">All developers</option>' + options;
   } catch (err) {
     console.error('Could not load developers list:', err);
   }
 }
 
+let dateFilter = { from: '', to: '', developer_id: '' };
+
+function buildSummaryUrl() {
+  const params = new URLSearchParams();
+  if (dateFilter.from) params.set('from', dateFilter.from);
+  if (dateFilter.to) params.set('to', dateFilter.to);
+  if (dateFilter.developer_id) params.set('developer_id', dateFilter.developer_id);
+  const qs = params.toString();
+  return `${API_BASE}/metrics/summary${qs ? '?' + qs : ''}`;
+}
+
 async function loadAll() {
   try {
     const [summary, tasks] = await Promise.all([
-      fetchJSON(`${API_BASE}/metrics/summary`),
+      fetchJSON(buildSummaryUrl()),
       fetchJSON(`${API_BASE}/tasks`),
     ]);
     renderMetrics(summary);
@@ -200,6 +264,53 @@ async function loadAll() {
 }
 
 // --- Event handlers ---
+
+document.getElementById('metricsGrid').addEventListener('click', async (e) => {
+  const btn = e.target.closest('.rec-btn');
+  if (!btn) return;
+
+  if (!dateFilter.developer_id) {
+    alert('Select a specific developer in the filter above first.');
+    return;
+  }
+
+  const metricKey = btn.dataset.metric;
+  const label = btn.dataset.label;
+  const suggested = METRIC_TIPS[metricKey] || '';
+  const message = window.prompt(`Send a recommendation for ${label}:`, suggested);
+  if (!message || !message.trim()) return;
+
+  try {
+    await fetchJSON(`${API_BASE}/recommendations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        developer_id: dateFilter.developer_id,
+        metric_key: metricKey,
+        message: message.trim(),
+      }),
+    });
+    alert('Recommendation sent.');
+  } catch (err) {
+    alert(err.message || 'Could not send recommendation');
+  }
+});
+
+document.getElementById('dateFilterForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  dateFilter.from = document.getElementById('filterFrom').value;
+  dateFilter.to = document.getElementById('filterTo').value;
+  dateFilter.developer_id = document.getElementById('filterDeveloper').value;
+  loadAll();
+});
+
+document.getElementById('clearFilterBtn').addEventListener('click', () => {
+  dateFilter = { from: '', to: '', developer_id: '' };
+  document.getElementById('filterFrom').value = '';
+  document.getElementById('filterTo').value = '';
+  document.getElementById('filterDeveloper').value = '';
+  loadAll();
+});
 
 document.getElementById('taskForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -265,28 +376,72 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
 });
 
 // --- Defect Radar ---
-// One-tap logging instead of a form: a bug is caught in the moment it's
-// found, so the fastest possible input wins over a "correct" data-entry form.
+// JIRA-style: title, description, severity, then the same two outcome
+// buttons as before — matching the Developer/QA "My Activity" page so the
+// panel looks and behaves the same regardless of which dashboard it's on.
 
-async function logBug(foundInTesting) {
+function bugSeverityIcon(severity) {
+  if (severity === 'high') return '🔴';
+  if (severity === 'low') return '🟢';
+  return '🟡';
+}
+
+async function refreshBugRecent() {
+  const list = document.getElementById('bugRecentList');
+  try {
+    const bugs = await fetchJSON(`${API_BASE}/bugs`);
+    if (!bugs || bugs.length === 0) {
+      list.innerHTML = '<p class="empty-state">No bugs logged yet.</p>';
+      return;
+    }
+    list.innerHTML = bugs.slice(0, 5).map((b) => `
+      <div class="growth-recent-item">
+        <span>${bugSeverityIcon(b.severity)}</span>
+        <span class="growth-recent-item-title">${escapeHtml(b.title)} ${b.status === 'resolved' ? '(resolved)' : ''}</span>
+        <span class="growth-recent-item-time">${b.reported_by_name ? escapeHtml(b.reported_by_name) : ''}</span>
+      </div>
+    `).join('');
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+document.getElementById('bugForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const outcome = e.submitter ? e.submitter.dataset.outcome : null;
+  const title = document.getElementById('bugTitle').value.trim();
+  const description = document.getElementById('bugDescription').value.trim();
+  const severity = document.getElementById('bugSeverity').value;
   const feedback = document.getElementById('radarFeedback');
+
+  if (!outcome || !title) {
+    feedback.textContent = 'enter a bug title first';
+    return;
+  }
+
   feedback.textContent = 'logging…';
   try {
     await fetchJSON(`${API_BASE}/bugs`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ found_in_testing: foundInTesting ? 1 : 0 }),
+      body: JSON.stringify({
+        title,
+        description,
+        severity,
+        found_in_testing: outcome === 'caught' ? 1 : 0,
+      }),
     });
-    feedback.textContent = foundInTesting
-        ? 'logged — caught before release'
-        : 'logged — escaped to prod';
+    feedback.textContent = outcome === 'caught' ? 'logged — caught before release' : 'logged — escaped to prod';
+    document.getElementById('bugTitle').value = '';
+    document.getElementById('bugDescription').value = '';
+    document.getElementById('bugSeverity').value = 'medium';
+    refreshBugRecent();
   } catch (err) {
-    feedback.textContent = 'could not log bug — try again';
-    console.error(err);
+    feedback.textContent = err.message || 'could not log — try again';
   }
   await refreshDefectRadar();
   loadAll();
-}
+});
 
 async function refreshDefectRadar() {
   const fill = document.getElementById('radarBarFill');
@@ -305,9 +460,6 @@ async function refreshDefectRadar() {
     console.error(err);
   }
 }
-
-document.getElementById('logCaughtBtn').addEventListener('click', () => logBug(true));
-document.getElementById('logEscapedBtn').addEventListener('click', () => logBug(false));
 
 // --- Growth Log ---
 // Same one-tap-logging spirit as Defect Radar: type what you finished,
@@ -411,11 +563,46 @@ document.querySelectorAll('.collab-btn').forEach((btn) => {
   btn.addEventListener('click', () => logCollaboration(btn.dataset.type));
 });
 
+// --- Wellbeing Check-in ---
+// Private, supportive, one-tap. This exists to protect people, not to
+// rank or punish them — keep the copy and framing consistent with that.
+
+async function logCheckin(loadRating) {
+  const developer_id = document.getElementById('checkinAssignee').value;
+  const feedback = document.getElementById('checkinFeedback');
+
+  if (!developer_id) {
+    feedback.textContent = 'select your name first';
+    return;
+  }
+
+  feedback.textContent = 'logging…';
+  try {
+    await fetchJSON(`${API_BASE}/checkins`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ developer_id, load_rating: loadRating }),
+    });
+    feedback.textContent = 'thanks for checking in';
+  } catch (err) {
+    feedback.textContent = 'could not log — try again';
+    console.error(err);
+  }
+  loadAll();
+}
+
+document.querySelectorAll('.checkin-btn').forEach((btn) => {
+  btn.addEventListener('click', () => logCheckin(Number(btn.dataset.rating)));
+});
+
 // Require a logged-in session before showing any data
 (async () => {
   const user = await checkAuthOrRedirect();
   if (!user) return; // already redirecting to login.html
   document.getElementById('currentUser').textContent = user.username;
+  if (user.role === 'admin') {
+    document.getElementById('manageUsersLink').style.display = 'flex';
+  }
   loadDevelopers();
   loadAll();
   refreshDefectRadar();

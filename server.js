@@ -15,7 +15,12 @@ const metricsRoutes = require('./routes/metrics');
 const bugRoutes = require('./routes/bugs');
 const achievementRoutes = require('./routes/achievements');
 const collaborationRoutes = require('./routes/collaborations');
+const checkinRoutes = require('./routes/checkins');
+const timeLogRoutes = require('./routes/timeLogs');
+const recommendationRoutes = require('./routes/recommendations');
+const userManagementRoutes = require('./routes/users');
 const requireAuth = require('./middleware/requireAuth');
+const requireRole = require('./middleware/requireRole');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -46,6 +51,12 @@ app.use('/api/metrics', requireAuth, metricsRoutes);
 app.use('/api/bugs', requireAuth, bugRoutes);
 app.use('/api/achievements', requireAuth, achievementRoutes);
 app.use('/api/collaborations', requireAuth, collaborationRoutes);
+app.use('/api/checkins', requireAuth, checkinRoutes);
+app.use('/api/time-logs', requireAuth, timeLogRoutes);
+app.use('/api/recommendations', requireAuth, recommendationRoutes);
+
+// Admin-only: account management (create/edit/delete user logins)
+app.use('/api/users', requireAuth, requireRole('admin'), userManagementRoutes);
 
 // Serve the dashboard frontend (public/index.html, styles.css, app.js, login.html)
 app.use(express.static('public'));

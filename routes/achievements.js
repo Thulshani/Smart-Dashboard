@@ -14,20 +14,28 @@ router.get('/', (req, res) => {
 });
 
 // POST /api/achievements — log a new one
-// body: { developer_id, type: 'course'|'certification'|'tool', title }
+// body: { type, title }
+//
+// developer_id is NOT trusted from the client. It's taken from the logged-in
+// user's linked developer profile (req.user.developer_id, set by
+// requireAuth). This closes a gap where anyone could previously log
+// activity as any developer by picking a different dropdown value. Falls
+// back to an explicit body.developer_id only for accounts with no link
+// (e.g. an Admin/Manager logging on someone's behalf).
 router.post('/', (req, res) => {
-  const { developer_id, type, title } = req.body;
+  const { type, title } = req.body;
+  const developer_id = req.user.developer_id || req.body.developer_id;
 
   const validTypes = ['course', 'certification', 'tool'];
   if (!validTypes.includes(type)) {
     return res.status(400).json({ error: `type must be one of: ${validTypes.join(', ')}` });
   }
   if (!developer_id) {
-    return res.status(400).json({ error: 'developer_id is required' });
+    return res.status(400).json({ error: 'Your account is not linked to a developer profile — ask an admin to link it' });
   }
 
   const stmt = db.prepare(
-    'INSERT INTO achievements (developer_id, type, title) VALUES (?, ?, ?)'
+      'INSERT INTO achievements (developer_id, type, title) VALUES (?, ?, ?)'
   );
   const result = stmt.run(developer_id, type, title || null);
 

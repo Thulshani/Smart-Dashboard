@@ -1,172 +1,280 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dev &amp; QA Performance Dashboard</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dev &amp; QA Performance Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+        /* Sidebar shell — kept self-contained here so it doesn't depend on
+           edits to styles.css. Safe to move into styles.css later if you'd
+           rather keep all styling in one place. */
+        .app-shell { display: flex; min-height: 100vh; align-items: stretch; }
+        .sidebar {
+            width: 220px; flex-shrink: 0; background: linear-gradient(180deg, var(--panel), #101013);
+            border-right: 1px solid var(--panel-border); display: flex; flex-direction: column;
+            padding: 20px 0; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+        }
+        .sidebar-brand { display: flex; align-items: center; gap: 8px; padding: 0 20px 20px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; color: var(--text-primary); }
+        .sidebar-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+        .sidebar-link {
+            display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+            padding: 10px 20px; background: none; border: none; cursor: pointer;
+            font-size: 14px; color: var(--text-muted); font-family: inherit;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+        .sidebar-link:hover { background: rgba(255, 122, 26, 0.08); color: var(--text-primary); }
+        .sidebar-link.active { background: rgba(255, 122, 26, 0.14); color: var(--accent-orange-bright); font-weight: 600; border-left: 3px solid var(--accent-orange); padding-left: 17px; }
+        .sidebar-footer { padding: 16px 20px 0; border-top: 1px solid var(--panel-border); margin-top: 12px; font-size: 13px; }
+        .sidebar-footer #currentUser { display: block; margin-bottom: 8px; color: var(--text-muted); }
+        .content-area { flex: 1; min-width: 0; padding: 24px 32px; overflow-y: auto; }
+        .page-section { display: none; }
+        .page-section.active { display: block; }
+        .top-status { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-bottom: 16px; font-size: 13px; color: var(--text-muted); }
+    </style>
 </head>
 <body>
 
-<!-- Signature element: pipeline strip. Each segment is a metric's status,
-     styled like a CI build pipeline — the visual language this audience
-     already reads every day. -->
-<div class="pipeline-strip" id="pipelineStrip"></div>
+<div class="app-shell">
 
-<header class="app-header">
-  <div class="header-inner">
-    <div class="brand">
-      <span class="brand-mark">◧</span>
-      <div>
-        <h1>Dev &amp; QA Performance</h1>
-        <p class="brand-sub">Sprint analytics &amp; task board</p>
-      </div>
-    </div>
-    <div class="header-meta">
-      <span class="dot dot-live"></span>
-      <span id="lastUpdated">connecting…</span>
-      <span id="currentUser" style="margin-left: 10px;"></span>
-      <button id="logoutBtn" class="logout-btn">Log out</button>
-    </div>
-  </div>
-</header>
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <span class="brand-mark">◧</span>
+            <span>Dev &amp; QA</span>
+        </div>
+        <nav class="sidebar-nav">
+            <button class="sidebar-link active" data-section="dashboard">Dashboard</button>
+            <button class="sidebar-link" data-section="filter">Filter</button>
+            <button class="sidebar-link" data-section="radar">Defect Radar</button>
+            <button class="sidebar-link" data-section="growth">Growth Log</button>
+            <button class="sidebar-link" data-section="collab">Collaboration</button>
+            <button class="sidebar-link" data-section="checkin">Check-in</button>
+            <button class="sidebar-link" data-section="tasks">Tasks</button>
+            <button class="sidebar-link" data-section="users" id="manageUsersLink" style="display:none;">Manage Users</button>
+        </nav>
+        <div class="sidebar-footer">
+            <span id="currentUser"></span>
+            <button id="logoutBtn" class="logout-btn">Log out</button>
+        </div>
+    </aside>
 
-<main class="layout">
+    <!-- MAIN CONTENT -->
+    <main class="content-area">
 
-  <!-- METRICS -->
-  <section class="metrics-grid" id="metricsGrid" aria-label="Performance metrics">
-    <!-- cards injected by app.js -->
-  </section>
+        <div class="pipeline-strip" id="pipelineStrip"></div>
+        <div class="top-status">
+            <span class="dot dot-live"></span>
+            <span id="lastUpdated">connecting…</span>
+        </div>
 
-  <!-- DEFECT RADAR -->
-  <section class="panel radar-panel">
-    <div class="panel-header">
-      <h2>Defect Radar</h2>
-      <span class="panel-count" id="radarBarLabel">—</span>
-    </div>
+        <!-- DASHBOARD (home) -->
+        <section id="section-dashboard" class="page-section active">
+            <section class="metrics-grid" id="metricsGrid" aria-label="Performance metrics">
+                <!-- cards injected by app.js -->
+            </section>
+        </section>
 
-    <p class="radar-sub">Log a bug the moment it's found — feeds Defect Prevention directly.</p>
+        <!-- FILTER -->
+        <section id="section-filter" class="page-section">
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>Filter by developer &amp; date</h2>
+                </div>
+                <form id="dateFilterForm" class="task-form">
+                    <select id="filterDeveloper">
+                        <option value="">All developers</option>
+                    </select>
+                    <label for="filterFrom" style="align-self: center;">From</label>
+                    <input type="date" id="filterFrom" />
+                    <label for="filterTo" style="align-self: center;">To</label>
+                    <input type="date" id="filterTo" />
+                    <button type="submit">Apply filter</button>
+                    <button type="button" id="clearFilterBtn">Clear</button>
+                </form>
+                <p class="radar-sub" style="margin-top: 8px;">Filters Delivery Reliability, Defect Prevention, Focus Stability, Learning &amp; Growth, Collaboration, and Burnout Risk. Quality Impact, Technical Debt, and Automation Strength always show current team-wide data (SonarCloud/GitHub don't provide per-developer or historical snapshots).</p>
+            </section>
+        </section>
 
-    <div class="radar-buttons">
-      <button id="logCaughtBtn" class="radar-btn caught">
-        <span class="radar-icon" aria-hidden="true">▲</span>
-        <span class="radar-label">Caught in QA</span>
-        <span class="radar-desc">found before release</span>
-      </button>
-      <button id="logEscapedBtn" class="radar-btn escaped">
-        <span class="radar-icon" aria-hidden="true">●</span>
-        <span class="radar-label">Escaped to Prod</span>
-        <span class="radar-desc">found after release</span>
-      </button>
-    </div>
+        <!-- DEFECT RADAR -->
+        <section id="section-radar" class="page-section">
+            <section class="panel radar-panel">
+                <div class="panel-header">
+                    <h2>Defect Radar</h2>
+                    <span class="panel-count" id="radarBarLabel">—</span>
+                </div>
 
-    <div class="radar-bar-track">
-      <div id="radarBarFill" class="radar-bar-fill"></div>
-    </div>
+                <p class="radar-sub">Log a bug the moment it's found — feeds Defect Prevention directly.</p>
 
-    <p id="radarFeedback" class="radar-feedback">&nbsp;</p>
-  </section>
+                <form id="bugForm" class="growth-form">
+                    <input type="text" id="bugTitle" placeholder="Bug title (e.g. Login fails on Safari)" required />
+                    <textarea id="bugDescription" placeholder="Description (optional) — steps to reproduce, expected vs actual, etc." rows="4"></textarea>
+                    <select id="bugSeverity" required>
+                        <option value="low">Low severity</option>
+                        <option value="medium" selected>Medium severity</option>
+                        <option value="high">High severity</option>
+                    </select>
+                    <div class="radar-buttons">
+                        <button type="submit" data-outcome="caught" class="radar-btn caught">
+                            <span class="radar-icon" aria-hidden="true">▲</span>
+                            <span class="radar-label">Caught in QA</span>
+                            <span class="radar-desc">found before release</span>
+                        </button>
+                        <button type="submit" data-outcome="escaped" class="radar-btn escaped">
+                            <span class="radar-icon" aria-hidden="true">●</span>
+                            <span class="radar-label">Escaped to Prod</span>
+                            <span class="radar-desc">found after release</span>
+                        </button>
+                    </div>
+                </form>
 
-  <!-- GROWTH LOG -->
-  <section class="panel growth-panel">
-    <div class="panel-header">
-      <h2>Growth Log</h2>
-      <span class="panel-count" id="growthScoreLabel">—</span>
-    </div>
+                <div class="radar-bar-track">
+                    <div id="radarBarFill" class="radar-bar-fill"></div>
+                </div>
 
-    <p class="radar-sub">What did you finish? Enter your developer ID and a title, then tap the category.</p>
+                <p id="radarFeedback" class="radar-feedback">&nbsp;</p>
 
-    <form id="growthForm" class="growth-form">
-      <select id="growthAssignee" required>
-        <option value="">Select your name…</option>
-      </select>
-      <input type="text" id="growthTitle" placeholder="e.g. React Advanced Patterns" required />
-      <div class="growth-buttons">
-        <button type="submit" data-type="course" class="growth-btn">
-          <span class="growth-label">Course done</span>
-          <span class="growth-points">+15 pts</span>
-        </button>
-        <button type="submit" data-type="certification" class="growth-btn">
-          <span class="growth-label">Certification</span>
-          <span class="growth-points">+25 pts</span>
-        </button>
-        <button type="submit" data-type="tool" class="growth-btn">
-          <span class="growth-label">New tool</span>
-          <span class="growth-points">+10 pts</span>
-        </button>
-      </div>
-    </form>
+                <div class="growth-recent">
+                    <p class="growth-recent-title">Recent bugs</p>
+                    <div id="bugRecentList">
+                        <p class="empty-state">No bugs logged yet.</p>
+                    </div>
+                </div>
+            </section>
+        </section>
 
-    <p id="growthFeedback" class="radar-feedback">&nbsp;</p>
+        <!-- GROWTH LOG -->
+        <section id="section-growth" class="page-section">
+            <section class="panel growth-panel">
+                <div class="panel-header">
+                    <h2>Growth Log</h2>
+                    <span class="panel-count" id="growthScoreLabel">—</span>
+                </div>
 
-    <div class="growth-recent">
-      <p class="growth-recent-title">Recent</p>
-      <div id="growthRecentList">
-        <p class="empty-state">No achievements logged yet.</p>
-      </div>
-    </div>
-  </section>
+                <p class="radar-sub">What did you finish? Enter your developer ID and a title, then tap the category.</p>
 
-  <!-- COLLABORATION LOG -->
-  <section class="panel collab-panel">
-    <div class="panel-header">
-      <h2>Collaboration Log</h2>
-      <span class="panel-count" id="collabScoreLabel">—</span>
-    </div>
+                <form id="growthForm" class="growth-form">
+                    <select id="growthAssignee" required>
+                        <option value="">Select your name…</option>
+                    </select>
+                    <input type="text" id="growthTitle" placeholder="e.g. React Advanced Patterns" required />
+                    <div class="growth-buttons">
+                        <button type="submit" data-type="course" class="growth-btn">
+                            <span class="growth-label">Course done</span>
+                            <span class="growth-points">+15 pts</span>
+                        </button>
+                        <button type="submit" data-type="certification" class="growth-btn">
+                            <span class="growth-label">Certification</span>
+                            <span class="growth-points">+25 pts</span>
+                        </button>
+                        <button type="submit" data-type="tool" class="growth-btn">
+                            <span class="growth-label">New tool</span>
+                            <span class="growth-points">+10 pts</span>
+                        </button>
+                    </div>
+                </form>
 
-    <p class="radar-sub">Log it when it happens — select your name, then tap.</p>
+                <p id="growthFeedback" class="radar-feedback">&nbsp;</p>
 
-    <select id="collabAssignee" required>
-      <option value="">Select your name…</option>
-    </select>
+                <div class="growth-recent">
+                    <p class="growth-recent-title">Recent</p>
+                    <div id="growthRecentList">
+                        <p class="empty-state">No achievements logged yet.</p>
+                    </div>
+                </div>
+            </section>
+        </section>
 
-    <div class="collab-buttons">
-      <button type="button" data-type="review" class="collab-btn">
-        <span class="collab-label">PR review</span>
-        <span class="collab-points">+10 pts</span>
-      </button>
-      <button type="button" data-type="help" class="collab-btn">
-        <span class="collab-label">Helped teammate</span>
-        <span class="collab-points">+15 pts</span>
-      </button>
-      <button type="button" data-type="shared" class="collab-btn">
-        <span class="collab-label">Shared task</span>
-        <span class="collab-points">+20 pts</span>
-      </button>
-    </div>
+        <!-- COLLABORATION LOG -->
+        <section id="section-collab" class="page-section">
+            <section class="panel collab-panel">
+                <div class="panel-header">
+                    <h2>Collaboration Log</h2>
+                    <span class="panel-count" id="collabScoreLabel">—</span>
+                </div>
 
-    <p id="collabFeedback" class="radar-feedback">&nbsp;</p>
-  </section>
+                <p class="radar-sub">Log it when it happens — select your name, then tap.</p>
 
-  <!-- TASKS -->
-  <section class="panel tasks-panel">
-    <div class="panel-header">
-      <h2>Tasks</h2>
-      <span class="panel-count" id="taskCount">0</span>
-    </div>
+                <select id="collabAssignee" required>
+                    <option value="">Select your name…</option>
+                </select>
 
-    <form class="task-form" id="taskForm">
-      <input type="text" id="taskTitle" placeholder="Task title" required />
-      <select id="taskAssignee">
-        <option value="">Unassigned</option>
-      </select>
-      <select id="taskPriority">
-        <option value="low">Low</option>
-        <option value="medium" selected>Medium</option>
-        <option value="high">High</option>
-      </select>
-      <input type="date" id="taskDueDate" />
-      <button type="submit">Add task</button>
-    </form>
+                <div class="collab-buttons">
+                    <button type="button" data-type="review" class="collab-btn">
+                        <span class="collab-label">PR review</span>
+                        <span class="collab-points">+10 pts</span>
+                    </button>
+                    <button type="button" data-type="help" class="collab-btn">
+                        <span class="collab-label">Helped teammate</span>
+                        <span class="collab-points">+15 pts</span>
+                    </button>
+                    <button type="button" data-type="shared" class="collab-btn">
+                        <span class="collab-label">Shared task</span>
+                        <span class="collab-points">+20 pts</span>
+                    </button>
+                </div>
 
-    <div class="task-list" id="taskList">
-      <p class="empty-state">No tasks yet — add one above to get started.</p>
-    </div>
-  </section>
+                <p id="collabFeedback" class="radar-feedback">&nbsp;</p>
+            </section>
+        </section>
 
-</main>
+        <!-- WELLBEING CHECK-IN -->
+        <section id="section-checkin" class="page-section">
+            <section class="panel checkin-panel">
+                <div class="panel-header">
+                    <h2>How's your workload?</h2>
+                </div>
+
+                <p class="radar-sub">A quick, private check-in — this helps the team spot burnout early, not track performance.</p>
+
+                <select id="checkinAssignee" required>
+                    <option value="">Select your name…</option>
+                </select>
+
+                <div class="checkin-buttons">
+                    <button type="button" data-rating="1" class="checkin-btn">😌 Fine</button>
+                    <button type="button" data-rating="2" class="checkin-btn">🙂 Okay</button>
+                    <button type="button" data-rating="3" class="checkin-btn">😐 Busy</button>
+                    <button type="button" data-rating="4" class="checkin-btn">😓 Stretched</button>
+                    <button type="button" data-rating="5" class="checkin-btn">🥵 Overwhelmed</button>
+                </div>
+
+                <p id="checkinFeedback" class="radar-feedback">&nbsp;</p>
+            </section>
+        </section>
+
+        <!-- TASKS -->
+        <section id="section-tasks" class="page-section">
+            <section class="panel tasks-panel">
+                <div class="panel-header">
+                    <h2>Tasks</h2>
+                    <span class="panel-count" id="taskCount">0</span>
+                </div>
+
+                <form class="task-form" id="taskForm">
+                    <input type="text" id="taskTitle" placeholder="Task title" required />
+                    <select id="taskAssignee">
+                        <option value="">Unassigned</option>
+                    </select>
+                    <select id="taskPriority">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                    <input type="date" id="taskDueDate" />
+                    <button type="submit">Add task</button>
+                </form>
+
+                <div class="task-list" id="taskList">
+                    <p class="empty-state">No tasks yet — add one above to get started.</p>
+                </div>
+            </section>
+        </section>
+
+    </main>
+</div>
 
 <script src="app.js"></script>
 </body>

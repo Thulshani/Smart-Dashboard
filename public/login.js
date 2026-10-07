@@ -1,28 +1,16 @@
 // login.js
+// Sign-in only — there is no self-signup. Accounts are created by an
+// Admin via the Manage Users screen (see routes/users.js).
 
-let mode = 'login'; // 'login' | 'register'
-
-const tabs = document.querySelectorAll('.login-tab');
 const form = document.getElementById('authForm');
-const submitBtn = document.getElementById('submitBtn');
 const errorEl = document.getElementById('loginError');
-
-tabs.forEach(tab => {
-  tab.addEventListener('click', () => {
-    tabs.forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    mode = tab.dataset.mode;
-    submitBtn.textContent = mode === 'login' ? 'Sign in' : 'Create account';
-    errorEl.textContent = '';
-  });
-});
 
 // If already logged in, skip straight to the dashboard
 fetch('/api/auth/me', { credentials: 'include' })
-  .then(res => {
-    if (res.ok) window.location.href = 'index.html';
-  })
-  .catch(() => {});
+    .then(res => {
+      if (res.ok) window.location.href = 'index.html';
+    })
+    .catch(() => {});
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -31,10 +19,8 @@ form.addEventListener('submit', async (e) => {
   const username = document.getElementById('username').value.trim();
   const password = document.getElementById('password').value;
 
-  const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
-
   try {
-    const res = await fetch(endpoint, {
+    const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include', // required so the session cookie gets set/sent
@@ -48,7 +34,13 @@ form.addEventListener('submit', async (e) => {
       return;
     }
 
-    window.location.href = 'index.html';
+    // Managers/Admins land on the full dashboard; Developers/QA land on
+    // their activity-only page.
+    if (data.role === 'manager' || data.role === 'admin') {
+      window.location.href = 'index.html';
+    } else {
+      window.location.href = 'my-activity.html';
+    }
   } catch (err) {
     errorEl.textContent = 'Could not reach the server';
   }

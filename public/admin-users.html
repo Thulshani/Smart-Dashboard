@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manage Users — Dev &amp; QA Performance Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-inner">
+    <div class="brand">
+      <span class="brand-mark">◧</span>
+      <div>
+        <h1>Manage Users</h1>
+        <p class="brand-sub">Admin only — create and manage team accounts</p>
+      </div>
+    </div>
+    <div class="header-meta">
+      <a href="index.html" class="back-link">&larr; Back to dashboard</a>
+      <span id="currentUser"></span>
+      <button id="logoutBtn" class="logout-btn">Log out</button>
+    </div>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- CREATE USER -->
+  <section class="panel">
+    <div class="panel-header">
+      <h2>Create account</h2>
+    </div>
+
+    <form id="createUserForm" class="task-form">
+      <input type="text" id="newUsername" placeholder="Username" required />
+      <input type="password" id="newPassword" placeholder="Password (min 6 chars)" required minlength="6" />
+      <select id="newRole" required>
+        <option value="developer">Developer</option>
+        <option value="qa">QA</option>
+        <option value="manager">Manager</option>
+        <option value="admin">Admin</option>
+      </select>
+      <input type="text" id="newEmployeeId" placeholder="Employee ID (e.g. EMP001)" />
+      <input type="text" id="newDeveloperName" placeholder="Full name (only if new Employee ID)" style="display:none;" />
+      <button type="submit">Create account</button>
+    </form>
+
+    <p id="employeeIdStatus" class="radar-feedback">&nbsp;</p>
+    <p id="createFeedback" class="radar-feedback">&nbsp;</p>
+  </section>
+
+  <!-- USER LIST -->
+  <section class="panel">
+    <div class="panel-header">
+      <h2>Existing accounts</h2>
+      <span class="panel-count" id="userCount">0</span>
+    </div>
+
+    <div class="task-list" id="userList">
+      <p class="empty-state">Loading…</p>
+    </div>
+  </section>
+
+</main>
+
+<script src="admin-users.js"></script>
+</body>
+</html>
